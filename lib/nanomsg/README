@@ -1,0 +1,44 @@
+Welcome to nanomsg
+------------------
+
+nanomsg library is a simple high-performance implementation of several 
+"scalability protocols". Scalability protocol's job is to define how multiple 
+applications communicate to form a single distributed application.
+
+For more info check the web site: http://nanomsg.org
+
+Build it
+--------
+
+1.  The build is performed using CMake, so first make sure that CMake is 
+    installed on your system
+2.  git clone git@github.com:250bpm/nanomsg.git
+3.  cd nanomsg
+4.  mkdir build
+5.  cd build
+6.  cmake .. # or cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr ..
+7.  make
+8.  make check
+9.  sudo make install
+10. On Linux or other platforms which use ld.so for dynamic linking, run 
+    ldconfig or equivalent as root to update your system’s shared library cache
+
+Resources
+---------
+
+Website: http://nanomsg.org
+
+Source code: https://github.com/250bpm/nanomsg
+
+Documentation: http://nanomsg.org/v0.0.0/nanomsg.7.html
+
+Bug tracker: https://github.com/250bpm/nanomsg/issues
+
+Mailing list: nanomsg@freelists.org
+
+Subscribe to the list here: http://www.freelists.org/list/nanomsg
+
+IRC chatroom: channel #nanomsg at irc.freenode.net/8001
+
+Support: http://www.250bpm.com/services
+
