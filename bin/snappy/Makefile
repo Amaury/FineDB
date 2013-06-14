@@ -1,4 +1,3 @@
-NAME	= scmd
 IPATH = -I. -I../../include
 CFLAGS := $(IPATH) -Wall -g -O2 -DNDEBUG=1 -DSG=1
 # Remove -DSG=1 if you don't need scather-gather support
@@ -6,10 +5,12 @@ CFLAGS := $(IPATH) -Wall -g -O2 -DNDEBUG=1 -DSG=1
 
 .PHONY: all clean
 
-all: clean $(NAME)
+scmd: scmd.o map.o util.o
+	cc scmd.o map.o util.o ../../lib/libsnappy.a   -o scmd
+	cp scmd ../
+
+all: clean scmd
 
 clean: 
-	rm -f *.o $(NAME) ../$(NAME)
+	rm -f *.o scmd ../scmd
 
-$(NAME): scmd.o map.o util.o ../../lib/libsnappy.a
-	cp $(NAME) ../

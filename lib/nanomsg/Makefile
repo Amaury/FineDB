@@ -10,16 +10,18 @@ HEADERS	=	src/nn.h \
 		src/ipc.h \
 		src/tcp.h
 
-all: clean lib
-
-clean:
-	cd build; rm -rf *
-	rm -f ../libnanomsg.a
-	rm -rf ../../include/nanomsg
+.PHONY: all clean lib
 
 lib:
 	cd build; cmake ..; make
 	cp build/libnanomsg.a ../
 	mkdir ../../include/nanomsg
 	cp ${HEADERS} ../../include/nanomsg
+
+all: clean lib
+
+clean:
+	cd build; rm -rf *
+	rm -f ../libnanomsg.a
+	rm -rf ../../include/nanomsg
 

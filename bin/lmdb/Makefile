@@ -11,15 +11,15 @@ PROGS	= mdb_stat mdb_copy
 
 .PHONY: all clean bin
 
+bin: $(PROGS)
+	cp mdb_stat ../
+	cp mdb_copy ../
+
 all:	clean bin
 
 clean:
 	rm -rf $(PROGS) *.[ao] *~
 	rm -f ../mdb_stat ../mdb_copy
-
-bin: $(PROGS)
-	cp mdb_stat ../
-	cp mdb_copy ../
 
 mdb_stat: mdb_stat.o ../../lib/liblmdb.a
 

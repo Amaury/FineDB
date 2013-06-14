@@ -1,3 +1,10 @@
+.PHONY: all clean lib
+
+lib:
+	cd lmdb; make
+	cd nanomsg; make
+	cd snappy-c; make
+
 all:
 	cd lmdb; make all
 	cd nanomsg; make all
@@ -8,7 +15,3 @@ clean:
 	cd nanomsg; make clean
 	cd snappy-c; make clean
 
-lib:
-	cd lmdb; make
-	cd nanomsg; make
-	cd snappy-c; make
