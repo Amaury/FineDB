@@ -1,0 +1,9 @@
+=Ylib=
+C utilities library.
+
+* Author: Amaury Bouchard <amaury@amaury.net>
+* License: [[http://www.gnu.org/licenses/lgpl.html|GNU Lesser General Public License]]
+
+More information on http://www.headerbrowser.org
+
+[[http://ylib.amaury.net/hbresult-html/|Full documentation]] (generated with [[http://www.headerbrowser.org|HeaderBrowser]])

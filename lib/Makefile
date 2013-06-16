@@ -1,17 +1,16 @@
-.PHONY: all clean lib
+SUBDIRS =	lmdb \
+		nanomsg \
+		snappy-c \
+		ylib
 
-lib:
-	cd lmdb; make
-	cd nanomsg; make
-	cd snappy-c; make
+.PHONY: default clean all
 
-all:
-	cd lmdb; make all
-	cd nanomsg; make all
-	cd snappy-c; make all
+default:
+	for i in $(SUBDIRS); do cd $$i; make; cd ..; done
 
 clean:
-	cd lmdb; make clean
-	cd nanomsg; make clean
-	cd snappy-c; make clean
+	for i in $(SUBDIRS); do cd $$i; make clean; cd ..; done
+	rm -f *.a *~
+
+all: clean default
 
