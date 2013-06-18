@@ -5,8 +5,9 @@
 # Executable's name
 NAME	=	finedb
 # Source files
-SRC	=	main.c	\
-		database.c	\
+SRC	=	main.c			\
+		database.c		\
+		server.c		\
 		connection_thread.c
 
 # ###################################################################
