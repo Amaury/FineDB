@@ -5,7 +5,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <stdio.h>
+#include "nanomsg/nn.h"
+#include "nanomsg/fanout.h"
 #include "ylog.h"
+#include "connection_thread.h"
 #include "server.h"
 
 /* Initialize a finedb structure. */
@@ -15,12 +19,9 @@ finedb_t *init_finedb() {
 	finedb->run = YTRUE;
 	//finedb->database = NULL;
 	finedb->socket = -1;
+	finedb->threads_socket = -1;
 	//finedb->writer_tid = 0;
-	//finedb->tcp_threads = NULL;
-	finedb->nbr_threads_mini = DEFAULT_NBR_THREADS;
-	finedb->nbr_threads_maxi = DEFAULT_NBR_MAX_THREADS;
-	//finedb->first_waiting_thread = NULL;
-	finedb->purge_counter = DEFAULT_PURGE_COUNTER;
+	finedb->tcp_threads = yv_create(YVECT_SIZE_MEDIUM);
 	return (finedb);
 }
 
@@ -42,7 +43,7 @@ yerr_t create_listening_socket(finedb_t *finedb, unsigned short port) {
 	if (setsockopt(finedb->socket, SOL_SOCKET, SO_KEEPALIVE, (void*)&on,
 	               sizeof(on)) < 0)
 		YLOG_ADD(YLOG_WARN, "setsockopt(SO_KEEPALIVE) failed");
-	// binding to any 
+	// binding to any interface
 	addr_size = sizeof(addr);
 	memset(&addr, 0, addr_size);
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -65,6 +66,7 @@ void main_loop(finedb_t *finedb) {
 	struct sockaddr_in addr;
 	unsigned int addr_size;
 	const int on = 1;
+	char buff[16];
 
 	addr_size = sizeof(addr);
 	memset(&addr, 0, addr_size);
@@ -76,46 +78,10 @@ void main_loop(finedb_t *finedb) {
 		if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void*)&on,
 		               sizeof(on)) < 0)
 			YLOG_ADD(YLOG_WARN, "setsockopt(KEEPALIVE) failed");
-		// choose a thread to process the connection
-		find_thread_to_process_connection(finedb, fd);
+		// write the file descriptor number into the threads communication socket
+		snprintf(buff, 16, "%d", fd);
+		nn_send(finedb->threads_socket, buff, strlen(buff) + 1, 0);
 	}
 	close(finedb->socket);
 }
 
-/* Find a thread to process an incoming connection. */
-void find_thread_to_process_connection(finedb_t *finedb, int fd) {
-	tcp_thread_t *thread;
-
-	// search a waiting thread
-	if (finedb->first_waiting_thread == NULL) {
-		ylist_elem_t *elem;
-
-		for (elem = finedb->tcp_threads->first; elem; elem = elem->next) {
-			thread = (tcp_thread_t*)elem->data;
-			if (thread->state == TCP_WAIT)
-				break;
-		}
-		finedb->first_waiting_thread = elem;
-	}
-	// no free thread, create a new one
-
-	// use the first free thread to process the incoming connection
-	if (finedb->first_waiting_thread != NULL) {
-		thread = (tcp_thread_t*)finedb->first_waiting_thread->data;
-		thread->fd = fd;
-		thread->state = TCP_RUN;
-		pthread_mutex_unlock(&(thread->mut_do));
-		
-		for (i = 0; i < server->nbr_threads; ++i) {
-			thread = (ytcp_thread_t*)(server->vect_threads[i]);
-			if (thread->state == YTCP_WAIT) {
-				server->first_waiting = i;
-				break;
-			}
-		}
-		if (i == server->nbr_threads)
-			server->first_waiting = -1;
-		YLOG_MOD("ytcp", YLOG_DEBUG, "Exiting");
-		return (YENOERR);
-	}
-}

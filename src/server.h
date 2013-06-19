@@ -24,11 +24,4 @@ yerr_t create_listening_socket(finedb_t *finedb, unsigned short port);
  */
 void main_loop(finedb_t *finedb);
 
-/**
- * Find a thread to process an incoming connection.
- * @param	finedb	Pointer to the FineDB structure.
- * @param	fd	Connection socket's file descriptor.
- */
-void find_thread_to_process_connection(finedb_t *finedb, int fd);
-
 #endif /* __SERVER_H__ */

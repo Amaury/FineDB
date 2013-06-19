@@ -15,7 +15,7 @@ SRC	=	main.c			\
 # Paths to header files
 IPATH	= -I. -I../include
 # Path to libraries and lib's names
-LDPATH	= -L. -L../lib -llmdb -lnanomsg -lsnappy -ly -lpthread
+LDPATH	= -L. -L../lib -llmdb -lnanomsg -lsnappy -ly -lpthread -lrt
 # Compiler options
 EXEOPT	= -O3 # -g for debug
 
