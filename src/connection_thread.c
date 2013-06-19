@@ -46,12 +46,24 @@ void *_connection_thread_execution(void *param) {
 		int fd;
 
 		// waiting for a new connection to handle
-		if (nn_recv(incoming_socket, &buffer, NN_MSG, 0) < 0)
+		if (nn_recv(incoming_socket, &fd, sizeof(fd), 0) < 0)
 			continue;
-		fd = atoi((char*)buffer);
-		YLOG_ADD(YLOG_NOTE, "Réception d'une connection, gérée par un thread. fd=%d", fd);
-		write(fd, "OK ca marche\n", 13);
+		_connection_thread_process(thread, fd);
 		close(fd);
 	}
 }
 
+/* Process an incoming transmission. */
+void _connection_thread_process(tcp_thread_t *thread, int fd) {
+	char buff[4096];
+	size_t bufsz, offset;
+	unsigned char command;
+
+	for (; ; ) {
+		bufsz = read(fd, buff, 4096);
+		if (bufsz <= 0)
+			return;
+		// read command
+		command = buff[0];
+	}
+}

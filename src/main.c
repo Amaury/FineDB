@@ -10,6 +10,7 @@
 #include "nanomsg/fanout.h"
 #include "ydefs.h"
 #include "ylog.h"
+#include "ystr.h"
 #include "finedb.h"
 #include "database.h"
 #include "server.h"
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
 	int i;
 	unsigned short nbr_threads = DEFAULT_NBR_THREADS;
 	unsigned short port = DEFAULT_PORT;
-	char *db_path = DEFAULT_DB_PATH;
+	ystr_t db_path;
 	finedb_t *finedb;
 
 	finedb = init_finedb();
@@ -46,6 +47,7 @@ int main(int argc, char *argv[]) {
 	YLOG_INIT_STDERR();
 	YLOG_SET_NOTE();
 	// parse command line parameters
+	db_path = ys_new(DEFAULT_DB_PATH);
 	while ((i = getopt(argc, argv, optstr)) != -1) {
 		switch (i) {
 		case 't':
@@ -53,8 +55,11 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'p':
 			port = (unsigned short)atoi(optarg);
+			break;
 		case 'f':
-			db_path = optarg;
+			if (strlen(optarg) > ys_len(db_path))
+				ys_setsz(&db_path, strlen(optarg) + 1);
+			ys_printf(&db_path, "%s", optarg);
 			break;
 		case 'd':
 			YLOG_SET_DEBUG();
@@ -64,6 +69,8 @@ int main(int argc, char *argv[]) {
 			exit(0);
 		}
 	}
+	YLOG_ADD(YLOG_DEBUG, "Configuration\n\tNumber of threads: %d\n\tPort number: %d\n\tDatabase path: %s",
+	         nbr_threads, port, db_path);
 	// open database
 	finedb->database = database_open(db_path);
 	if (finedb->database == NULL) {

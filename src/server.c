@@ -79,8 +79,7 @@ void main_loop(finedb_t *finedb) {
 		               sizeof(on)) < 0)
 			YLOG_ADD(YLOG_WARN, "setsockopt(KEEPALIVE) failed");
 		// write the file descriptor number into the threads communication socket
-		snprintf(buff, 16, "%d", fd);
-		nn_send(finedb->threads_socket, buff, strlen(buff) + 1, 0);
+		nn_send(finedb->threads_socket, &fd, sizeof(fd), 0);
 	}
 	close(finedb->socket);
 }
