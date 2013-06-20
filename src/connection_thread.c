@@ -1,9 +1,10 @@
 #include <unistd.h>
 #include "nanomsg/nn.h"
 #include "nanomsg/fanout.h"
-#include "connection_thread.h"
 #include "ydefs.h"
 #include "ylog.h"
+#include "connection_thread.h"
+#include "protocol.h"
 
 /* Private function */
 static void *_connection_thread_execution(void *param);
@@ -42,28 +43,45 @@ void *_connection_thread_execution(void *param) {
 		pthread_exit(NULL);
 	}
 	for (; ; ) {
-		void *buffer;
 		int fd;
 
 		// waiting for a new connection to handle
 		if (nn_recv(incoming_socket, &fd, sizeof(fd), 0) < 0)
 			continue;
-		_connection_thread_process(thread, fd);
+		YLOG_ADD(YLOG_DEBUG, "Process an incoming connection.");
+		// loop on incoming requests
+		for (; ; ) {
+			char buff[4096];
+			size_t bufsz, offset;
+			unsigned char command;
+
+			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
+			bufsz = read(fd, buff, 4096);
+			if (bufsz <= 0) {
+				YLOG_ADD(YLOG_DEBUG, "The socket was closed (%d).", bufsz);
+				goto end_of_connection;
+			}
+			// read command
+			command = buff[0];
+			offset++;
+			switch (PROTOCOL_COMMAND(command)) {
+			case PROTO_PUT:
+				write(fd, "OK PUT", 6);
+				break;
+			case PROTO_GET:
+				write(fd, "OK GET", 6);
+				break;
+			case PROTO_DEL:
+				write(fd, "OK DEL", 6);
+				break;
+			default:
+				write(fd, "BAD CMD", 7);
+				goto end_of_connection;
+			}
+		}
+end_of_connection:
+		YLOG_ADD(YLOG_DEBUG, "End of connection.");
 		close(fd);
 	}
 }
 
-/* Process an incoming transmission. */
-void _connection_thread_process(tcp_thread_t *thread, int fd) {
-	char buff[4096];
-	size_t bufsz, offset;
-	unsigned char command;
-
-	for (; ; ) {
-		bufsz = read(fd, buff, 4096);
-		if (bufsz <= 0)
-			return;
-		// read command
-		command = buff[0];
-	}
-}
