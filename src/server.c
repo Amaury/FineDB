@@ -66,7 +66,6 @@ void main_loop(finedb_t *finedb) {
 	struct sockaddr_in addr;
 	unsigned int addr_size;
 	const int on = 1;
-	char buff[16];
 
 	addr_size = sizeof(addr);
 	memset(&addr, 0, addr_size);

@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include "nanomsg/nn.h"
+#include "nanomsg/fanin.h"
 #include "nanomsg/fanout.h"
 #include "ydefs.h"
 #include "ylog.h"
@@ -37,7 +38,7 @@ void *connection_thread_execution(void *param) {
 	YLOG_ADD(YLOG_DEBUG, "Thread loop.");
 	thread = (tcp_thread_t*)param;
 	// opening a connection to the writer thread
-	if ((thread->write_sock = nn_socket(AF_SP, NN_PUSH)) < 0 ||
+	if ((thread->write_sock = nn_socket(AF_SP, NN_SOURCE)) < 0 ||
 	    nn_connect(thread->write_sock, ENDPOINT_WRITER_SOCKET) < 0) {
 		YLOG_ADD(YLOG_WARN, "Unable to connect to writer's socket.");
 		pthread_exit(NULL);
@@ -56,7 +57,7 @@ void *connection_thread_execution(void *param) {
 		YLOG_ADD(YLOG_DEBUG, "Process an incoming connection.");
 		// loop on incoming requests
 		for (; ; ) {
-			char buff[4096];
+			char buff[8192];
 			size_t bufsz, offset;
 			unsigned char command;
 

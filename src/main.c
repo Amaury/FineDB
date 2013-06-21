@@ -15,6 +15,7 @@
 #include "database.h"
 #include "server.h"
 #include "connection_thread.h"
+#include "writer_thread.h"
 
 /** Usage function. */
 static void usage() {
@@ -25,10 +26,6 @@ static void usage() {
 		"\t-h           Shows this help and exits.\n"
 		"\t-d           Debug mode. Error messages are more verbose.\n"
 		"\n");
-}
-
-void *writer_loop(void *param) {
-	return (NULL);
 }
 
 /**
@@ -66,8 +63,9 @@ int main(int argc, char *argv[]) {
 			exit(0);
 		}
 	}
-	YLOG_ADD(YLOG_DEBUG, "Configuration\n\tNumber of threads: %d\n\tPort number: %d\n"
-	         "\tDatabase path: %s", nbr_threads, port, db_path);
+	YLOG_ADD(YLOG_DEBUG, "Configuration\n\tNumber of threads: %d\n"
+	         "\tPort number: %d\n\tDatabase path: %s", nbr_threads, port,
+	         db_path);
 	// open database
 	finedb->database = database_open(db_path);
 	if (finedb->database == NULL) {
@@ -78,13 +76,13 @@ int main(int argc, char *argv[]) {
 	if ((finedb->threads_socket = nn_socket(AF_SP, NN_PUSH)) < 0 ||
 	    nn_bind(finedb->threads_socket, ENDPOINT_THREADS_SOCKET) < 0) {
 		YLOG_ADD(YLOG_CRIT, "Unable to create threads socket.");
-		exit(4);
+		exit(2);
 	}
 	// create writer thread
 	if (pthread_create(&finedb->writer_tid, NULL, writer_loop, finedb)) {
         	YLOG_ADD(YLOG_ERR, "Unable to create writer thread.");
 		database_close(finedb->database);
-		exit(2);
+		exit(3);
 	}
 	// create connection threads
 	for (i = 0; (unsigned short)i < nbr_threads; i++) {
@@ -96,7 +94,7 @@ int main(int argc, char *argv[]) {
 	// create the listening socket
 	if (create_listening_socket(finedb, port) != YENOERR) {
 		YLOG_ADD(YLOG_CRIT, "Aborting.");
-		exit(3);
+		exit(4);
 	}
 	// main server loop
 	main_loop(finedb);

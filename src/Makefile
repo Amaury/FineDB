@@ -8,6 +8,7 @@ NAME	=	finedb
 SRC	=	main.c			\
 		database.c		\
 		server.c		\
+		writer_thread.c		\
 		connection_thread.c	\
 		command_put.c
 
