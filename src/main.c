@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 	int i;
 	unsigned short nbr_threads = DEFAULT_NBR_THREADS;
 	unsigned short port = DEFAULT_PORT;
-	ystr_t db_path;
+	char *db_path = DEFAULT_DB_PATH;
 	finedb_t *finedb;
 
 	finedb = init_finedb();
@@ -47,7 +47,6 @@ int main(int argc, char *argv[]) {
 	YLOG_INIT_STDERR();
 	YLOG_SET_NOTE();
 	// parse command line parameters
-	db_path = ys_new(DEFAULT_DB_PATH);
 	while ((i = getopt(argc, argv, optstr)) != -1) {
 		switch (i) {
 		case 't':
@@ -57,9 +56,7 @@ int main(int argc, char *argv[]) {
 			port = (unsigned short)atoi(optarg);
 			break;
 		case 'f':
-			if (strlen(optarg) > ys_len(db_path))
-				ys_setsz(&db_path, strlen(optarg) + 1);
-			ys_printf(&db_path, "%s", optarg);
+			db_path = strdup(optarg);
 			break;
 		case 'd':
 			YLOG_SET_DEBUG();
@@ -69,8 +66,8 @@ int main(int argc, char *argv[]) {
 			exit(0);
 		}
 	}
-	YLOG_ADD(YLOG_DEBUG, "Configuration\n\tNumber of threads: %d\n\tPort number: %d\n\tDatabase path: %s",
-	         nbr_threads, port, db_path);
+	YLOG_ADD(YLOG_DEBUG, "Configuration\n\tNumber of threads: %d\n\tPort number: %d\n"
+	         "\tDatabase path: %s", nbr_threads, port, db_path);
 	// open database
 	finedb->database = database_open(db_path);
 	if (finedb->database == NULL) {
@@ -79,7 +76,7 @@ int main(int argc, char *argv[]) {
 	}
 	// create the nanomsg socket for threads communication
 	if ((finedb->threads_socket = nn_socket(AF_SP, NN_PUSH)) < 0 ||
-	    nn_bind(finedb->threads_socket, "inproc://threads_socket") < 0) {
+	    nn_bind(finedb->threads_socket, ENDPOINT_THREADS_SOCKET) < 0) {
 		YLOG_ADD(YLOG_CRIT, "Unable to create threads socket.");
 		exit(4);
 	}

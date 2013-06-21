@@ -13,6 +13,11 @@
 /** @const DEFAULT_PORT Default port number. */
 #define DEFAULT_PORT		11138
 
+/** @const ENDPOINT_THREADS_SOCKET Threads' connection endpoint. */
+#define ENDPOINT_THREADS_SOCKET	"inproc://threads_socket"
+/** @const ENDPOINT_WRITER_SOCKET Writer thread's connection endpoint. */
+#define ENDPOINT_WRITER_SOCKET	"inproc://writer_socket"
+
 /**
  * @typedef	Main structure of the FineDB application.
  * @field	run			YTRUE while the server must be running.
