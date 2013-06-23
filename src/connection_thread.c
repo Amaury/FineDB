@@ -57,38 +57,43 @@ void *connection_thread_execution(void *param) {
 		YLOG_ADD(YLOG_DEBUG, "Process an incoming connection.");
 		// loop on incoming requests
 		for (; ; ) {
-			char buff[8192];
-			size_t bufsz, offset;
-			unsigned char command;
+			ydynabin_t *buff;
+			unsigned char *command;
 
+			buff = ydynabin_new(NULL, 0, YFALSE);
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
-			bufsz = read(thread->fd, buff, 4096);
-			if (bufsz <= 0) {
-				YLOG_ADD(YLOG_DEBUG, "The socket was closed (%d).", bufsz);
+			if (connection_read_data(thread->fd, buff, 1) != YENOERR) {
+				YLOG_ADD(YLOG_DEBUG, "The socket was closed.");
 				goto end_of_connection;
 			}
 			// read command
-			command = buff[0];
-			offset++;
-			switch (REQUEST_COMMAND(command)) {
+			command = ydynabin_forward(buff, sizeof(unsigned char));
+			switch (REQUEST_COMMAND(*command)) {
 			case PROTO_PUT:
+				// PUT command
 				YLOG_ADD(YLOG_DEBUG, "PUT command");
-				if (command_put(thread, &buff[1], bufsz) != YENOERR)
+				if (command_put(thread, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_GET:
+				// GET command
 				YLOG_ADD(YLOG_DEBUG, "GET command");
-				if (connection_send_response(thread->fd, RESP_OK, NULL, 0) != YENOERR)
+				if (connection_send_response(thread->fd, RESP_OK,
+				                             NULL, 0) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_DEL:
+				// DEL command
 				YLOG_ADD(YLOG_DEBUG, "DEL COMMAND");
-				if (connection_send_response(thread->fd, RESP_OK, NULL, 0) != YENOERR)
+				if (connection_send_response(thread->fd, RESP_OK,
+				                             NULL, 0) != YENOERR)
 					goto end_of_connection;
 				break;
 			default:
+				// bad command
 				YLOG_ADD(YLOG_DEBUG, "Bad command");
-				connection_send_response(thread->fd, RESP_BAD_CMD, NULL, 0);
+				connection_send_response(thread->fd, RESP_BAD_CMD,
+				                         NULL, 0);
 				goto end_of_connection;
 			}
 		}
@@ -96,6 +101,28 @@ end_of_connection:
 		YLOG_ADD(YLOG_DEBUG, "End of connection.");
 		close(thread->fd);
 	}
+}
+
+/* Fill a dynamic buffer. */
+yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size) {
+	char buff[8196];
+	ssize_t bufsz;
+	yerr_t dynaerr;
+
+	if (container->len >= size)
+		return (YENOERR);
+	while (container->len < size) {
+		if ((bufsz = read(fd, buff, 8196)) < 0)
+			return (YEACCESS);
+		if (bufsz == 0) {
+			if (container->len < size)
+				return (YECONNRESET);
+			break;
+		}
+		if ((dynaerr = ydynabin_expand(container, buff, (size_t)bufsz)) != YENOERR)
+			return (dynaerr);
+	}
+	return (YENOERR);
 }
 
 /* Send a response. */

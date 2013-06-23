@@ -10,8 +10,8 @@ SRC       =	yvect.c		\
 		ystr.c		\
 		ylog.c		\
 		ybin.c		\
-		ylist.c		\
-		ytcp_server.c
+		ydynabin.c	\
+		ylist.c
 
 # Name of header files (names.h)
 HEADS     =	ydefs.h		\
@@ -20,8 +20,8 @@ HEADS     =	ydefs.h		\
 		ylog.h		\
 		yvect.h		\
 		ybin.h		\
-		ylist.h		\
-		ytcp_server.h
+		ydynabin.h	\
+		ylist.h
 
 # #####################################################################
 

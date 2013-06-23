@@ -2,8 +2,10 @@
 #include "nanomsg/fanin.h"
 #include "lmdb.h"
 #include "ylog.h"
+#include "ybin.h"
 #include "writer_thread.h"
 #include "finedb.h"
+#include "database.h"
 
 /* Callback function executed by the writer thread. */
 void *writer_loop(void *param) {
@@ -19,31 +21,20 @@ void *writer_loop(void *param) {
 	// loop to process new connections
 	for (; ; ) {
 		writer_msg_t *msg;
-		MDB_dbi dbi;
-		MDB_val key, data;
-		MDB_txn *txn;
+		ybin_t key_bin, data_bin;
 
 		// waiting for a new connection to handle
 		if (nn_recv(socket, &msg, sizeof(writer_msg_t*), 0) < 0)
 			continue;
 		/* add data into database */
-		// opening transaction
-		if (mdb_txn_begin(finedb->database, NULL, 0, &txn) != 0) {
-			YLOG_ADD(YLOG_WARN, "Unable to open transaction.");
-			goto free_data;
-		}
-		// opening the database
-		if (mdb_open(txn, NULL, 0, &dbi) != 0) {
-			YLOG_ADD(YLOG_WARN, "Unable to open database.");
-			goto free_data;
-		}
-		// write data
-		key.mv_size = msg->name_len;
-		key.mv_data = msg->name;
-		data.mv_size = msg->data_len;
-		data.mv_data = msg->data;
-		if (mdb_put(txn, dbi, &key, &data, 0) != 0)
+		ybin_set(&key_bin, msg->name, msg->name_len);
+		ybin_set(&data_bin, msg->data, msg->data_len);
+		YLOG_ADD(YLOG_DEBUG, "WRITE '%s' => '%s'", msg->name, msg->data);
+		if (database_put(finedb->database, key_bin, data_bin) != YENOERR) {
 			YLOG_ADD(YLOG_WARN, "Unable to write data into database.");
+			goto free_data;
+		}
+		YLOG_ADD(YLOG_DEBUG, "Data written to database");
 free_data:
 		// free data
 		YFREE(msg->name);

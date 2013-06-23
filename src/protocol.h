@@ -20,11 +20,13 @@ typedef enum protocol_command_e {
  * @constant	RESP_OK		OK.
  * @constant	RESP_BAD_CMD	Bad command.
  * @constant	RESP_PROTO	Protocol error.
+ * @constant	RESP_SERVER_ERR	Server error.
  */
 typedef enum protocol_response_e {
 	RESP_OK = 0,
 	RESP_BAD_CMD = 1,
-	RESP_PROTO = 2
+	RESP_PROTO = 2,
+	RESP_SERVER_ERR = 3
 } protocol_response_t;
 
 /** @define REQUEST_COMMAND Extract the command from other options. */

@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 #include "yerror.h"
+#include "ydynabin.h"
 #include "finedb.h"
 
 /**
@@ -10,7 +11,8 @@
  *		Structure of connection threads.
  * @field	tid		Thread ID.
  * @field	finedb		Pointer to the FineDB structure.
- * @field	fd		File descriptor to the socket used to communicate with the client.
+ * @field	fd		File descriptor to the socket used to communicate
+ *				with the client.
  * @field	write_sock	Nanomsg socket to communicate with the writer thread.
  */
 typedef struct tcp_thread_s {
@@ -51,6 +53,17 @@ tcp_thread_t *connection_thread_new(finedb_t *finedb);
  * @return	Always NULL.
  */
 void *connection_thread_execution(void *param);
+
+/**
+ * @function	connection_read_data
+ *		Ensures that a dynamic binary buffer contains the given number
+ *		of characters. If not, the needed data is read from socket.
+ * @param	fd		Socket descriptor.
+ * @param	container	Pointer to ydynabin_t structure.
+ * @param	size		Minimal size of the buffer.
+ * @return	YENOERR if OK.
+ */
+yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size);
 
 /**
  * @function	connection_send_response

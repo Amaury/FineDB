@@ -6,11 +6,11 @@
  */
 #define __FINEDB_MAIN__
 #include <unistd.h>
+#include <string.h>
 #include "nanomsg/nn.h"
 #include "nanomsg/fanout.h"
 #include "ydefs.h"
 #include "ylog.h"
-#include "ystr.h"
 #include "finedb.h"
 #include "database.h"
 #include "server.h"
