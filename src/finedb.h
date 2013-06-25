@@ -20,16 +20,16 @@
 
 /**
  * @typedef	Main structure of the FineDB application.
- * @field	run			YTRUE while the server must be running.
- * @field	database		LMDB environment.
- * @field	socket			Socket descriptor for incoming connections.
- * @field	threads_socket		Nanomsg socket for threads communication.
- * @field	writer_tid		ID of the writer thread.
- * @field	tcp_threads		List of connection threads.
+ * @field	run		YTRUE while the server must be running.
+ * @field	database	Pointer to the database environment.
+ * @field	socket		Socket descriptor for incoming connections.
+ * @field	threads_socket	Nanomsg socket for threads communication.
+ * @field	writer_tid	ID of the writer thread.
+ * @field	tcp_threads	List of connection threads.
  */
 typedef struct finedb_s {
 	ybool_t run;
-	MDB_env	*database;
+	MDB_env *database;
 	int socket;
 	int threads_socket;
 	pthread_t writer_tid;

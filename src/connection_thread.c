@@ -3,14 +3,17 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include "nanomsg/nn.h"
-#include "nanomsg/fanin.h"
+//#include "nanomsg/fanin.h"
+#include "nanomsg/reqrep.h"
 #include "nanomsg/fanout.h"
 #include "ydefs.h"
 #include "ylog.h"
 #include "yerror.h"
 #include "connection_thread.h"
 #include "protocol.h"
+#include "database.h"
 #include "command_put.h"
+#include "command_get.h"
 
 /* Create a new connection thread. */
 tcp_thread_t *connection_thread_new(finedb_t *finedb) {
@@ -38,7 +41,7 @@ void *connection_thread_execution(void *param) {
 	YLOG_ADD(YLOG_DEBUG, "Thread loop.");
 	thread = (tcp_thread_t*)param;
 	// opening a connection to the writer thread
-	if ((thread->write_sock = nn_socket(AF_SP, NN_SOURCE)) < 0 ||
+	if ((thread->write_sock = nn_socket(AF_SP, NN_REQ/*NN_SOURCE*/)) < 0 ||
 	    nn_connect(thread->write_sock, ENDPOINT_WRITER_SOCKET) < 0) {
 		YLOG_ADD(YLOG_WARN, "Unable to connect to writer's socket.");
 		pthread_exit(NULL);
@@ -52,7 +55,7 @@ void *connection_thread_execution(void *param) {
 	// loop to process new connections
 	for (; ; ) {
 		// waiting for a new connection to handle
-		if (nn_recv(incoming_socket, &thread->fd, sizeof(int), 0) < 0)
+		if (nn_recv(incoming_socket, &thread->fd, sizeof(int), 0) < 0 || thread->fd < 0)
 			continue;
 		YLOG_ADD(YLOG_DEBUG, "Process an incoming connection.");
 		// loop on incoming requests
@@ -78,8 +81,7 @@ void *connection_thread_execution(void *param) {
 			case PROTO_GET:
 				// GET command
 				YLOG_ADD(YLOG_DEBUG, "GET command");
-				if (connection_send_response(thread->fd, RESP_OK,
-				                             NULL, 0) != YENOERR)
+				if (command_get(thread, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_DEL:
@@ -101,6 +103,7 @@ end_of_connection:
 		YLOG_ADD(YLOG_DEBUG, "End of connection.");
 		close(thread->fd);
 	}
+	pthread_exit(NULL);
 }
 
 /* Fill a dynamic buffer. */
@@ -159,7 +162,7 @@ yerr_t connection_send_response(int fd, unsigned char code, const void *data, si
 		YLOG_ADD(YLOG_WARN, "Unable to send the complete response (%d / %d).", rc, expected);
 		return (YEIO);
 	}
-	YLOG_ADD(YLOG_DEBUG, "Sent %d bytes.", rc);
+	YLOG_ADD(YLOG_DEBUG, "Sent %d bytes '%s'.", rc, data);
 	return (YENOERR);
 }
 

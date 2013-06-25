@@ -13,7 +13,7 @@ MDB_env *database_open(const char *path) {
 		return (NULL);
 	}
 	// opening database
-	rc = mdb_env_open(env, path, 0, 0664);
+	rc = mdb_env_open(env, path, MDB_WRITEMAP | MDB_NOTLS, 0664);
 	if (rc) {
 		YLOG_ADD(YLOG_ERR, "Unable to open database environment.");
 		mdb_env_close(env);
@@ -40,13 +40,13 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 	// transaction init
 	rc = mdb_txn_begin(env, NULL, 0, &txn);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction.");
+		YLOG_ADD(YLOG_WARN, "Unable to create transaction.", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// open database in read-write mode
 	rc = mdb_open(txn, NULL, 0, &dbi);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to open database handle.");
+		YLOG_ADD(YLOG_WARN, "Unable to open database handle.", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// key and data init
@@ -57,13 +57,13 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 	// put data
 	rc = mdb_put(txn, dbi, &db_key, &db_data, 0);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to write data in database.");
+		YLOG_ADD(YLOG_WARN, "Unable to write data in database.", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// transaction commit
 	rc = mdb_txn_commit(txn);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to commit transaction.");
+		YLOG_ADD(YLOG_WARN, "Unable to commit transaction.", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// close database
@@ -81,13 +81,13 @@ yerr_t database_get(MDB_env *env, ybin_t key, ybin_t *data) {
 	// transaction init
 	rc = mdb_txn_begin(env, NULL, MDB_RDONLY, &txn);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction.");
+		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// open database in read-write mode
 	rc = mdb_open(txn, NULL, 0, &dbi);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to open database handle.");
+		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// key and data init
@@ -96,7 +96,7 @@ yerr_t database_get(MDB_env *env, ybin_t key, ybin_t *data) {
 	// get data
 	rc = mdb_get(txn, dbi, &db_key, &db_data);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to read data in database.");
+		YLOG_ADD(YLOG_WARN, "Unable to read data in database (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// end of transaction

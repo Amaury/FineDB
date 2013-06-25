@@ -4,9 +4,9 @@
  * @author	Amaury Bouchard <amaury@amaury.net>
  * @copyright	© 2013, Amaury Bouchard
  */
-#define __FINEDB_MAIN__
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
 #include "nanomsg/nn.h"
 #include "nanomsg/fanout.h"
 #include "ydefs.h"
@@ -17,6 +17,12 @@
 #include "connection_thread.h"
 #include "writer_thread.h"
 
+/* Global variable used by signal handlers. */
+finedb_t *finedb_g;
+
+/* Declaration of private functions. */
+static void signal_handler(int signal);
+
 /** Usage function. */
 static void usage() {
 	printf("Usage: finedb [-t number] [-p port] [-f path] [-h] [-d]\n"
@@ -26,6 +32,17 @@ static void usage() {
 		"\t-h           Shows this help and exits.\n"
 		"\t-d           Debug mode. Error messages are more verbose.\n"
 		"\n");
+}
+
+/** Signal handler. */
+static void signal_handler(int sig) {
+	YLOG_ADD(YLOG_DEBUG, "Interruption signal catched.");
+	signal(sig, SIG_IGN);
+	finedb_g->run = YFALSE;
+	// close database
+	database_close(finedb_g->database);
+	// exit program
+	exit(0);
 }
 
 /**
@@ -39,7 +56,11 @@ int main(int argc, char *argv[]) {
 	char *db_path = DEFAULT_DB_PATH;
 	finedb_t *finedb;
 
+	// FineDB structure init
 	finedb = init_finedb();
+	finedb_g = finedb;
+	// signal handlers
+	signal(SIGINT, signal_handler);
 	// log init
 	YLOG_INIT_STDERR();
 	YLOG_SET_NOTE();
@@ -76,6 +97,7 @@ int main(int argc, char *argv[]) {
 	if ((finedb->threads_socket = nn_socket(AF_SP, NN_PUSH)) < 0 ||
 	    nn_bind(finedb->threads_socket, ENDPOINT_THREADS_SOCKET) < 0) {
 		YLOG_ADD(YLOG_CRIT, "Unable to create threads socket.");
+		database_close(finedb->database);
 		exit(2);
 	}
 	// create writer thread

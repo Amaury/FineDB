@@ -12,6 +12,7 @@ yerr_t command_put(tcp_thread_t *thread, ydynabin_t *buff) {
 	uint32_t *pdata_len, data_len;
 	void *ptr, *name = NULL, *data = NULL;
 	writer_msg_t *msg = NULL;
+	char answer;
 
 	YLOG_ADD(YLOG_DEBUG, "PUT command");
 	// read name length
@@ -46,10 +47,17 @@ yerr_t command_put(tcp_thread_t *thread, ydynabin_t *buff) {
 	msg->data = data;
 	msg->data_len = data_len;
 	// send the message to the writer thread
-	if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0)
+	if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
+		YLOG_ADD(YLOG_WARN, "Unable to send message to writer thread.");
 		goto error;
-	YLOG_ADD(YLOG_DEBUG, "PUT command OK");
-	return (connection_send_response(thread->fd, RESP_OK, NULL, 0));
+	}
+	// wait for the answer
+	if (nn_recv(thread->write_sock, &answer, sizeof(answer), 0) < 0) {
+		YLOG_ADD(YLOG_WARN, "Unable to get answer from writer thread.");
+		goto error;
+	}
+	YLOG_ADD(YLOG_DEBUG, "PUT command %s", (answer ? "OK" : "failed"));
+	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_UNKNOWN), NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "PUT error");
 	YFREE(name);
