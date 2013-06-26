@@ -1,3 +1,7 @@
+/*
+ * todo: Poll two different nanomsg sockets, for async and sync writings.
+ * https://github.com/250bpm/nanomsg/blob/master/tests/poll.c
+ */
 #include "nanomsg/nn.h"
 //#include "nanomsg/fanin.h"
 #include "nanomsg/reqrep.h"

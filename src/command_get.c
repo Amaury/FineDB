@@ -8,7 +8,7 @@
 #include "database.h"
 
 /* Process a GET command. */
-yerr_t command_get(tcp_thread_t *thread, ydynabin_t *buff) {
+yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 	uint16_t *pname_len, name_len;
 	void *ptr, *name = NULL;
 	ybin_t bin_key, bin_data;
@@ -36,13 +36,13 @@ yerr_t command_get(tcp_thread_t *thread, ydynabin_t *buff) {
 	// send the response to the client
 	YLOG_ADD(YLOG_DEBUG, "GET command OK");
 	YFREE(name);
-	result = connection_send_response(thread->fd, RESP_OK, bin_data.data, bin_data.len);
+	result = connection_send_response(thread->fd, RESP_OK, compress, bin_data.data, bin_data.len);
 	//if (bin_data.data && bin_data.len)
 	//	free(bin_data.data);
 	return (result);
 error:
 	YLOG_ADD(YLOG_WARN, "GET error");
 	YFREE(name);
-	connection_send_response(thread->fd, RESP_SERVER_ERR, NULL, 0);
+	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
 	return (YEIO);
 }

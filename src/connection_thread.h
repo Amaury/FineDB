@@ -70,10 +70,12 @@ yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size);
  *		Send a response to the client.
  * @param	fd		Socket descriptor.
  * @param	code		Response code.
+ * @param	compress	YTRUE if the data could be compressed.
  * @param	data		Pointer to the data to send, or NULL if there is no data.
  * @param	data_len	Date size. Unused if data is NULL.
  * @return	YENOERR if OK.
  */
-yerr_t connection_send_response(int fd, unsigned char code, const void *data, size_t data_len);
+yerr_t connection_send_response(int fd, unsigned char code, ybool_t compress,
+                                const void *data, size_t data_len);
 
 #endif /* __CONNECTION_THREAD_H__ */

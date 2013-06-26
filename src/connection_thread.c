@@ -14,6 +14,7 @@
 #include "database.h"
 #include "command_put.h"
 #include "command_get.h"
+#include "command_del.h"
 
 /* Create a new connection thread. */
 tcp_thread_t *connection_thread_new(finedb_t *finedb) {
@@ -62,6 +63,7 @@ void *connection_thread_execution(void *param) {
 		for (; ; ) {
 			ydynabin_t *buff;
 			unsigned char *command;
+			ybool_t sync, compress;
 
 			buff = ydynabin_new(NULL, 0, YFALSE);
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
@@ -71,31 +73,33 @@ void *connection_thread_execution(void *param) {
 			}
 			// read command
 			command = ydynabin_forward(buff, sizeof(unsigned char));
+			sync = REQUEST_HAS_SYNC(*command) ? YTRUE : YFALSE;
+			compress = REQUEST_HAS_COMPRESS(*command) ? YTRUE : YFALSE;
 			switch (REQUEST_COMMAND(*command)) {
-			case PROTO_PUT:
-				// PUT command
-				YLOG_ADD(YLOG_DEBUG, "PUT command");
-				if (command_put(thread, buff) != YENOERR)
-					goto end_of_connection;
-				break;
 			case PROTO_GET:
 				// GET command
 				YLOG_ADD(YLOG_DEBUG, "GET command");
-				if (command_get(thread, buff) != YENOERR)
+				if (command_get(thread, compress, buff) != YENOERR)
 					goto end_of_connection;
 				break;
-			case PROTO_DEL:
-				// DEL command
-				YLOG_ADD(YLOG_DEBUG, "DEL COMMAND");
-				if (connection_send_response(thread->fd, RESP_OK,
-				                             NULL, 0) != YENOERR)
-					goto end_of_connection;
+			case PROTO_PUT:
+				if (REQUEST_HAS_DATA(*command)) {
+					// PUT command
+					YLOG_ADD(YLOG_DEBUG, "PUT command");
+					if (command_put(thread, sync, compress, buff) != YENOERR)
+						goto end_of_connection;
+				} else {
+					// DEL command
+					YLOG_ADD(YLOG_DEBUG, "DEL command");
+					if (command_del(thread, sync, buff) != YENOERR)
+						goto end_of_connection;
+				}
 				break;
 			default:
 				// bad command
-				YLOG_ADD(YLOG_DEBUG, "Bad command");
-				connection_send_response(thread->fd, RESP_BAD_CMD,
-				                         NULL, 0);
+				YLOG_ADD(YLOG_DEBUG, "Bad command '%x'", REQUEST_COMMAND(*command));
+				connection_send_response(thread->fd, RESP_PROTO,
+				                         YFALSE, NULL, 0);
 				goto end_of_connection;
 			}
 		}
@@ -129,7 +133,8 @@ yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size) {
 }
 
 /* Send a response. */
-yerr_t connection_send_response(int fd, unsigned char code, const void *data, size_t data_len) {
+yerr_t connection_send_response(int fd, unsigned char code, ybool_t compress,
+                                const void *data, size_t data_len) {
 	struct iovec iov[3];
 	struct msghdr mh;
 	ssize_t expected = 1, rc;

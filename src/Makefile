@@ -10,8 +10,9 @@ SRC	=	main.c			\
 		server.c		\
 		writer_thread.c		\
 		connection_thread.c	\
+		command_get.c		\
 		command_put.c		\
-		command_get.c
+		command_del.c
 
 # ###################################################################
 
