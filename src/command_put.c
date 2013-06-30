@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include "nanomsg/nn.h"
+#include "snappy.h"
 #include "ylog.h"
 #include "command_put.h"
 #include "protocol.h"
@@ -13,6 +14,9 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 	void *ptr, *name = NULL, *data = NULL;
 	writer_msg_t *msg = NULL;
 	char answer;
+	size_t zip_len;
+	char *zip_data = NULL;
+	struct snappy_env zip_env;
 
 	YLOG_ADD(YLOG_DEBUG, "PUT command");
 	// read name length
@@ -51,8 +55,32 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 		goto error;
 	msg->name = name;
 	msg->name_len = name_len;
-	msg->data = data;
-	msg->data_len = data_len;
+	if (compress) {
+		msg->data = data;
+		msg->data_len = data_len;
+	} else {
+		// data are not already compressed
+		memset(&zip_env, 0, sizeof(struct snappy_env));
+		if (snappy_init_env(&zip_env)) {
+			YLOG_ADD(YLOG_WARN, "Unable to create Snappy environment.");
+			goto error;
+		}
+		if ((zip_data = YMALLOC(snappy_max_compressed_length(data_len))) == NULL) {
+			YLOG_ADD(YLOG_WARN, "Unable to allocate memory.");
+			goto error;
+		}
+		if (snappy_compress(&zip_env, data, data_len, zip_data, &zip_len)) {
+			YFREE(zip_data);
+			YLOG_ADD(YLOG_WARN, "Unable to compress data.");
+			goto error;
+		}
+		zip_data[zip_len] = '\0';
+		YLOG_ADD(YLOG_DEBUG, "Compressed data : '%s' (%d) => '%s' (%d/%d)", data, data_len, zip_data, zip_len, strlen(zip_data));
+		snappy_free_env(&zip_env);
+		msg->data = zip_data;
+		msg->data_len = zip_len;
+		YFREE(data);
+	}
 	// send the message to the writer thread
 	if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
 		YLOG_ADD(YLOG_WARN, "Unable to send message to writer thread.");
@@ -64,9 +92,6 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 		goto error;
 	}
 	YLOG_ADD(YLOG_DEBUG, "PUT command %s", (answer ? "OK" : "failed"));
-	//YFREE(name);
-	//YFREE(data);
-	//YFREE(msg);
 	if (!sync)
 		return (YENOERR);
 	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_NO_DATA),
