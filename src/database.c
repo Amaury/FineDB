@@ -44,7 +44,7 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	rc = mdb_open(txn, NULL, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle.", mdb_strerror(rc));
 		return (YEACCESS);
@@ -67,46 +67,7 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 		return (YEACCESS);
 	}
 	// close database
-	mdb_dbi_close(env, dbi);
-	return (YENOERR);
-}
-
-/* Remove a key from database. */
-yerr_t database_del(MDB_env *env, ybin_t key) {
-	MDB_dbi dbi;
-	MDB_txn *txn;
-	MDB_val db_key;
-	int rc;
-
-	// transaction init
-	rc = mdb_txn_begin(env, NULL, 0, &txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction.", mdb_strerror(rc));
-		return (YEACCESS);
-	}
-	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to open database handle.", mdb_strerror(rc));
-		return (YEACCESS);
-	}
-	// key and data init
-	db_key.mv_size = key.len;
-	db_key.mv_data = key.data;
-	// put data
-	rc = mdb_del(txn, dbi, &db_key, NULL);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to write data in database.", mdb_strerror(rc));
-		return (YEACCESS);
-	}
-	// transaction commit
-	rc = mdb_txn_commit(txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to commit transaction.", mdb_strerror(rc));
-		return (YEACCESS);
-	}
-	// close database
-	mdb_dbi_close(env, dbi);
+	mdb_close(env, dbi);
 	return (YENOERR);
 }
 
@@ -124,7 +85,7 @@ yerr_t database_get(MDB_env *env, ybin_t key, ybin_t *data) {
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	rc = mdb_open(txn, NULL, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
 		return (YEACCESS);
@@ -141,7 +102,7 @@ yerr_t database_get(MDB_env *env, ybin_t key, ybin_t *data) {
 	// end of transaction
 	mdb_txn_abort(txn);
 	// close database
-	mdb_dbi_close(env, dbi);
+	mdb_close(env, dbi);
 	// return
 	data->len = db_data.mv_size;
 	data->data = db_data.mv_data;

@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include "nanomsg/nn.h"
+#include "snappy.h"
 #include "ylog.h"
 #include "ybin.h"
 #include "command_get.h"
@@ -33,12 +34,25 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 	// get data
 	if (database_get(thread->finedb->database, bin_key, &bin_data) != YENOERR)
 		goto error;
+	if (bin_data.len && !compress) {
+		// uncompress data before sending them
+		size_t unzip_len;
+		char *unzip_data;
+
+		YLOG_ADD(YLOG_DEBUG, "Uncompress data.");
+		snappy_uncompressed_length(bin_data.data, bin_data.len, &unzip_len);
+		unzip_data = YMALLOC(unzip_len);
+		if (snappy_uncompress(bin_data.data, bin_data.len, unzip_data)) {
+			YLOG_ADD(YLOG_WARN, "Unable to uncompress data.");
+			connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
+		}
+		bin_data.data = unzip_data;
+		bin_data.len = unzip_len;
+	}
 	// send the response to the client
 	YLOG_ADD(YLOG_DEBUG, "GET command OK");
 	YFREE(name);
 	result = connection_send_response(thread->fd, RESP_OK, compress, bin_data.data, bin_data.len);
-	//if (bin_data.data && bin_data.len)
-	//	free(bin_data.data);
 	return (result);
 error:
 	YLOG_ADD(YLOG_WARN, "GET error");
