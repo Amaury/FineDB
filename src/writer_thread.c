@@ -32,25 +32,36 @@ void *writer_loop(void *param) {
 		// waiting for a new connection to handle
 		if (nn_recv(socket, &msg, sizeof(writer_msg_t*), 0) < 0)
 			continue;
-		/* add data into database */
 		ybin_set(&key_bin, msg->name, msg->name_len);
-		ybin_set(&data_bin, msg->data, msg->data_len);
-		YLOG_ADD(YLOG_DEBUG, "WRITE '%s' => '%s'", msg->name, msg->data);
-		answer = 1;
-		if (database_put(finedb->database, key_bin, data_bin) == YENOERR) {
-			YLOG_ADD(YLOG_DEBUG, "Data written to database");
-			answer = 1;
-		} else {
-			YLOG_ADD(YLOG_WARN, "Unable to write data into database.");
-			answer = 0;
+		if (msg->type == WRITE_PUT) {
+			// add data in database
+			ybin_set(&data_bin, msg->data, msg->data_len);
+			YLOG_ADD(YLOG_DEBUG, "WRITE '%s' => '%s'", msg->name, msg->data);
+			if (database_put(finedb->database, key_bin, data_bin) == YENOERR) {
+				YLOG_ADD(YLOG_DEBUG, "Data written to database.");
+				answer = 1;
+			} else {
+				YLOG_ADD(YLOG_WARN, "Unable to write data into database.");
+				answer = 0;
+			}
+			YFREE(msg->data);
+		} else if (msg->type == WRITE_DEL) {
+			// remove data from database
+			YLOG_ADD(YLOG_DEBUG, "DELETE '%s'", msg->name);
+			if (database_del(finedb->database, key_bin) == YENOERR) {
+				YLOG_ADD(YLOG_DEBUG, "Data removed from database.");
+				answer = 1;
+			} else {
+				YLOG_ADD(YLOG_WARN, "Unable to delete data into database.");
+				answer = 0;
+			}
 		}
 		// free data
 		YFREE(msg->name);
-		YFREE(msg->data);
 		YFREE(msg);
 		// send back the answer
 		if (nn_send(socket, &answer, sizeof(answer), 0) < 0)
-			YLOG_ADD(YLOG_WARN, "Unable to send PUT answer to thread.");
+			YLOG_ADD(YLOG_WARN, "Unable to send answer to thread.");
 	}
         return (NULL);
 }

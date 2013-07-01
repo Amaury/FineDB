@@ -30,6 +30,14 @@ void database_close(MDB_env *env);
 yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data);
 
 /**
+ * Remove a key from database.
+ * @param	env	Database environment.
+ * @param	key	Key binary data.
+ * @return	YENOERR if OK.
+ */
+yerr_t database_del(MDB_env *env, ybin_t key);
+
+/**
  * Get a key from database.
  * @param	key	Key binary data.
  * @param	data	Pointer to an allocated data space.
