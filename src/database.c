@@ -44,7 +44,7 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_open(txn, NULL, 0, &dbi);
+	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle.", mdb_strerror(rc));
 		return (YEACCESS);
@@ -67,7 +67,7 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 		return (YEACCESS);
 	}
 	// close database
-	mdb_close(env, dbi);
+	mdb_dbi_close(env, dbi);
 	return (YENOERR);
 }
 
