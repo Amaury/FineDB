@@ -5,23 +5,19 @@
 #include "yerror.h"
 
 /**
- * Initialize a finedb structure.
- * @return	A pointer to the allocated structure.
- */
-finedb_t *init_finedb(void);
-
-/**
  * Create a listening socket.
- * @param	finedb	Pointer to the FineDB structure.
+ * @param	psock	Pointer to the socket.
  * @param	port	Port number to bind to.
  * @return	YENOERR if OK.
  */
-yerr_t create_listening_socket(finedb_t *finedb, unsigned short port);
+yerr_t server_create_listening_socket(int *psock, unsigned short port);
 
 /**
  * Main FineDB server loop.
- * @param	finedb	Pointer to the FineDB structure.
+ * @param	prun		Pointer to the run boolean.
+ * @param	socket		Socket to listen to.
+ * @param	threads_socket	Socket used to communicate with threads.
  */
-void main_loop(finedb_t *finedb);
+void server_loop(ybool_t *run, int socket, int threads_socket);
 
 #endif /* __SERVER_H__ */

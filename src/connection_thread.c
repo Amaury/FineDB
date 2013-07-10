@@ -33,6 +33,12 @@ tcp_thread_t *connection_thread_new(finedb_t *finedb) {
 	return (thread);
 }
 
+/* Add a connection socket in the feed of waiting connections. */
+void connection_thread_push_socket(int threads_socket, int fd) {
+	// write the file descriptor number into the threads communication socket
+	nn_send(threads_socket, &fd, sizeof(fd), 0);
+}
+
 /* Callback function executed by all server's threads. Loop to check if the
    thread must handle a new connection. */
 void *connection_thread_execution(void *param) {
