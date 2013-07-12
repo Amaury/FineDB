@@ -69,7 +69,7 @@ void *connection_thread_execution(void *param) {
 		for (; ; ) {
 			ydynabin_t *buff;
 			unsigned char *command;
-			ybool_t sync, compress;
+			ybool_t sync, compress, dbname;
 
 			buff = ydynabin_new(NULL, 0, YFALSE);
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
@@ -81,6 +81,9 @@ void *connection_thread_execution(void *param) {
 			command = ydynabin_forward(buff, sizeof(unsigned char));
 			sync = REQUEST_HAS_SYNC(*command) ? YTRUE : YFALSE;
 			compress = REQUEST_HAS_COMPRESS(*command) ? YTRUE : YFALSE;
+			dbname = REQUEST_HAS_DBNAME(*command) ? YTRUE : YFALSE;
+			YLOG_ADD(YLOG_DEBUG, "Command: '%x' - sync : %d - compress : %d\n",
+			         REQUEST_COMMAND(*command), (sync ? 1 : 0), (compress ? 1 : 0));
 			switch (REQUEST_COMMAND(*command)) {
 			case PROTO_GET:
 				// GET command

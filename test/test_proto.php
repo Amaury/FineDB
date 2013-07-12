@@ -19,7 +19,7 @@ const FINEDB_PORT = 11138;
 const REDIS_DSN = 'redis://serv2.finemedia.fr:6379/0';
 const MEMCACHE_DSN = 'memcache://serv2.finemedia.fr:11211';
 
-$nbrLoops = 15;
+$nbrLoops = 1;
 $dataList = array(
 	'aaa'			=> 'bbb',
 	'trululu pouet pouet'	=> 'tagada tsouin tsouin',
@@ -46,11 +46,13 @@ $sock = fsockopen(FINEDB_HOST, FINEDB_PORT);
 $timer->start();
 for ($i = 0; $i < $nbrLoops; $i++) {
 	foreach ($dataList as $key => $data)
-		commandGet($sock, "$key-$i");
+		commandGet($sock, "$key-$i", $data);
 }
 $timer->stop();
 fclose($sock);
 print("GET : " . $timer->getTime() . "\n");
+
+exit();
 
 // Redis
 print(Ansi::bold("Redis\n"));
@@ -93,7 +95,7 @@ print("GET : " . $timer->getTime() . "\n");
  * @param	string	$data	Data to send.
  */
 function commandPut($sock, $key, $data) {
-	$buffer = chr(0x22) . pack('n', mb_strlen($key, 'ascii')) . $key .
+	$buffer = chr(0x41) . pack('n', mb_strlen($key, 'ascii')) . $key .
 		  pack('N', mb_strlen($data, 'ascii')) . $data;
 	fwrite($sock, $buffer);
 	$response = fread($sock, 4096);
@@ -103,11 +105,14 @@ function commandPut($sock, $key, $data) {
  * Fetch data from FineDB server.
  * @param	stream	$sock	Socket descriptor.
  * @param	string	$key	Key of the data.
+ * @param	string	$check	(optional) Data that should have been retreived.
  */
-function commandGet($sock, $key) {
+function commandGet($sock, $key, $check=null) {
 	$buffer = chr(0) . pack('n', mb_strlen($key, 'ascii')) . $key;
 	fwrite($sock, $buffer);
 	$response = fread($sock, 4096);
+	if (isset($check) && $response != $check)
+		print("ERR GET '$key' => '$response' (instead of '$check')\n");
 	//showResponse($response);
 	//print("'$key' => '" . mb_substr($response, 5, 4096, 'ascii') . "'\n");
 }
@@ -118,17 +123,17 @@ function commandGet($sock, $key) {
 function showResponse($data) {
 	$primeCode = ord($data[0]);
 	$hasData = $primeCode & 0x40;
-	$code = $primeCode & 0x3f;
+	$code = $primeCode & 0x3;
 	if ($code == 0)
 		print("[OK]");
 	else if ($code == 1)
-		print("[BAD CMD]");
-	else if ($code == 2)
 		print("[PROTOCOL ERR]");
-	else if ($code == 3)
+	else if ($code == 2)
 		print("[SERVER ERR]");
+	else if ($code == 3)
+		print("[NO DATA]");
 	else if ($code == 4)
-		print("[UNKOWN]");
+		print("[UNKOWN ERR]");
 	else
 		print("(unkown response)");
 	print(" ($primeCode / $code)\n");
