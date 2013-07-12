@@ -12,35 +12,22 @@
 #include "connection_thread.h"
 #include "server.h"
 
-/* Initialize a finedb structure. */
-finedb_t *init_finedb() {
-	finedb_t *finedb = YMALLOC(sizeof(finedb_t));
-
-	finedb->run = YTRUE;
-	//finedb->database = NULL;
-	finedb->socket = -1;
-	finedb->threads_socket = -1;
-	//finedb->writer_tid = 0;
-	finedb->tcp_threads = yv_create(YVECT_SIZE_MEDIUM);
-	return (finedb);
-}
-
 /* Create the socket for incoming connections. */
-yerr_t create_listening_socket(finedb_t *finedb, unsigned short port) {
+yerr_t server_create_listening_socket(int *psock, unsigned short port) {
 	struct sockaddr_in addr;
 	unsigned int addr_size;
 	const int on = 1;
 
 	// create the socket
-	if ((finedb->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((*psock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		YLOG_ADD(YLOG_CRIT, "Socket error");
 		return (YEIO);
 	}
 	// some options
-	if (setsockopt(finedb->socket, SOL_SOCKET, SO_REUSEADDR, (void*)&on,
+	if (setsockopt(*psock, SOL_SOCKET, SO_REUSEADDR, (void*)&on,
 	               sizeof(on)) < 0)
 		YLOG_ADD(YLOG_WARN, "setsockopt(SO_REUSEADDR) failed");
-	if (setsockopt(finedb->socket, SOL_SOCKET, SO_KEEPALIVE, (void*)&on,
+	if (setsockopt(*psock, SOL_SOCKET, SO_KEEPALIVE, (void*)&on,
 	               sizeof(on)) < 0)
 		YLOG_ADD(YLOG_WARN, "setsockopt(SO_KEEPALIVE) failed");
 	// binding to any interface
@@ -49,11 +36,11 @@ yerr_t create_listening_socket(finedb_t *finedb, unsigned short port) {
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	if (bind(finedb->socket, (struct sockaddr*)&addr, addr_size) < 0) {
+	if (bind(*psock, (struct sockaddr*)&addr, addr_size) < 0) {
 		YLOG_ADD(YLOG_CRIT, "Bind error");
 		return (YEBADF);
 	}
-	if (listen(finedb->socket, SOMAXCONN)) {
+	if (listen(*psock, SOMAXCONN)) {
 		YLOG_ADD(YLOG_CRIT, "Listen error");
 		return (YEBADF);
 	}
@@ -61,7 +48,7 @@ yerr_t create_listening_socket(finedb_t *finedb, unsigned short port) {
 }
 
 /* Main FineDB server loop. */
-void main_loop(finedb_t *finedb) {
+void server_loop(ybool_t *run, int socket, int threads_socket) {
 	int fd;
 	struct sockaddr_in addr;
 	unsigned int addr_size;
@@ -69,17 +56,17 @@ void main_loop(finedb_t *finedb) {
 
 	addr_size = sizeof(addr);
 	memset(&addr, 0, addr_size);
-	while (finedb->run) {
+	while (*run) {
 		// accept a new connection
-		if ((fd = accept(finedb->socket, (struct sockaddr*)&addr,
+		if ((fd = accept(socket, (struct sockaddr*)&addr,
 		                 &addr_size)) < 0)
 			continue ;
 		if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void*)&on,
 		               sizeof(on)) < 0)
 			YLOG_ADD(YLOG_WARN, "setsockopt(KEEPALIVE) failed");
 		// write the file descriptor number into the threads communication socket
-		nn_send(finedb->threads_socket, &fd, sizeof(fd), 0);
+		connection_thread_push_socket(threads_socket, fd);
 	}
-	close(finedb->socket);
+	close(socket);
 }
 

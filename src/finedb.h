@@ -1,3 +1,9 @@
+/**
+ * @header	finedb.h
+ *
+ * @author	Amaury Bouchard <amaury@amaury.net>
+ * @copyright	© 2013, Amaury Bouchard
+ */
 #ifndef __FINEDB_H__
 #define __FINEDB_H__
 
@@ -35,5 +41,27 @@ typedef struct finedb_s {
 	pthread_t writer_tid;
 	yvect_t tcp_threads;
 } finedb_t;
+
+/**
+ * Initialize a finedb structure.
+ * @param	db_path		Path to the database directory.
+ * @param	port		Port number to listen to.
+ * @param	nbr_threads	Number of connection threads.
+ * @return	A pointer to the allocated structure.
+ */
+finedb_t *finedb_init(const char *db_path, unsigned short port,
+                      unsigned short nbr_threads);
+
+/**
+ * Starts a finedb run.
+ * @param	finedb	Pointer to the finedb structure.
+ */
+void finedb_start(finedb_t *finedb);
+
+/**
+ * Ends a finedb run.
+ * @param	finedb	Pointer to a finedb structure.
+ */
+void finedb_stop(finedb_t *finedb);
 
 #endif /* __FINEDB_H__ */

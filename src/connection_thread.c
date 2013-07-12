@@ -33,6 +33,12 @@ tcp_thread_t *connection_thread_new(finedb_t *finedb) {
 	return (thread);
 }
 
+/* Add a connection socket in the feed of waiting connections. */
+void connection_thread_push_socket(int threads_socket, int fd) {
+	// write the file descriptor number into the threads communication socket
+	nn_send(threads_socket, &fd, sizeof(fd), 0);
+}
+
 /* Callback function executed by all server's threads. Loop to check if the
    thread must handle a new connection. */
 void *connection_thread_execution(void *param) {
@@ -63,7 +69,7 @@ void *connection_thread_execution(void *param) {
 		for (; ; ) {
 			ydynabin_t *buff;
 			unsigned char *command;
-			ybool_t sync, compress;
+			ybool_t sync, compress, dbname;
 
 			buff = ydynabin_new(NULL, 0, YFALSE);
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
@@ -75,6 +81,9 @@ void *connection_thread_execution(void *param) {
 			command = ydynabin_forward(buff, sizeof(unsigned char));
 			sync = REQUEST_HAS_SYNC(*command) ? YTRUE : YFALSE;
 			compress = REQUEST_HAS_COMPRESS(*command) ? YTRUE : YFALSE;
+			dbname = REQUEST_HAS_DBNAME(*command) ? YTRUE : YFALSE;
+			YLOG_ADD(YLOG_DEBUG, "Command: '%x' - sync : %d - compress : %d\n",
+			         REQUEST_COMMAND(*command), (sync ? 1 : 0), (compress ? 1 : 0));
 			switch (REQUEST_COMMAND(*command)) {
 			case PROTO_GET:
 				// GET command

@@ -46,6 +46,14 @@ typedef enum tcp_state_e {
 tcp_thread_t *connection_thread_new(finedb_t *finedb);
 
 /**
+ * @function	connection_thread_push_socket
+ *		Add a connection socket in the feed of waiting connections.
+ * @param	threads_socket	Socket of internal communication.
+ * @param	fd		File descriptor of the waiting connection's socket.
+ */
+void connection_thread_push_socket(int threads_socket, int socket);
+
+/**
  * @function	connection_thread_execution
  *		Callback function executed by all server's threads. Loop to
  *		check if the thread must handle a new connection.

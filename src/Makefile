@@ -6,6 +6,7 @@
 NAME	=	finedb
 # Source files
 SRC	=	main.c			\
+		finedb.c		\
 		database.c		\
 		server.c		\
 		writer_thread.c		\
