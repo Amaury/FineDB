@@ -9,7 +9,7 @@
 #include "database.h"
 
 /* Process a GET command. */
-yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
+yerr_t command_get(tcp_thread_t *thread, ybool_t dbname, ybool_t compress, ydynabin_t *buff) {
 	uint16_t *pname_len, name_len;
 	void *ptr, *name = NULL;
 	ybin_t bin_key, bin_data;

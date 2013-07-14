@@ -62,7 +62,8 @@ void *connection_thread_execution(void *param) {
 	// loop to process new connections
 	for (; ; ) {
 		// waiting for a new connection to handle
-		if (nn_recv(incoming_socket, &thread->fd, sizeof(int), 0) < 0 || thread->fd < 0)
+		if (nn_recv(incoming_socket, &thread->fd, sizeof(int), 0) < 0 ||
+		    thread->fd < 0)
 			continue;
 		YLOG_ADD(YLOG_DEBUG, "Process an incoming connection.");
 		// loop on incoming requests
@@ -82,25 +83,26 @@ void *connection_thread_execution(void *param) {
 			sync = REQUEST_HAS_SYNC(*command) ? YTRUE : YFALSE;
 			compress = REQUEST_HAS_COMPRESS(*command) ? YTRUE : YFALSE;
 			dbname = REQUEST_HAS_DBNAME(*command) ? YTRUE : YFALSE;
-			YLOG_ADD(YLOG_DEBUG, "Command: '%x' - sync : %d - compress : %d\n",
-			         REQUEST_COMMAND(*command), (sync ? 1 : 0), (compress ? 1 : 0));
+			YLOG_ADD(YLOG_DEBUG, "Req: '%x' - sync: %d - comp: %d\n",
+			         REQUEST_COMMAND(*command), (sync ? 1 : 0),
+			         (compress ? 1 : 0));
 			switch (REQUEST_COMMAND(*command)) {
 			case PROTO_GET:
 				// GET command
 				YLOG_ADD(YLOG_DEBUG, "GET command");
-				if (command_get(thread, compress, buff) != YENOERR)
+				if (command_get(thread, dbname, compress, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_PUT:
 				if (REQUEST_HAS_DATA(*command)) {
 					// PUT command
 					YLOG_ADD(YLOG_DEBUG, "PUT command");
-					if (command_put(thread, sync, compress, buff) != YENOERR)
+					if (command_put(thread, dbname, sync, compress, buff) != YENOERR)
 						goto end_of_connection;
 				} else {
 					// DEL command
 					YLOG_ADD(YLOG_DEBUG, "DEL command");
-					if (command_del(thread, sync, buff) != YENOERR)
+					if (command_del(thread, dbname, sync, buff) != YENOERR)
 						goto end_of_connection;
 				}
 				break;
