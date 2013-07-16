@@ -19,17 +19,26 @@ extern "C" {
 #include "ydefs.h"
 #include "yerror.h"
 
+/** @define YDYNABIN_RNDSZ Round a size number to 8KB bound. */
+#define YDYNABIN_RNDSZ(s)	(s + (s % 8192))
+
+/** @define YDYNABIN_SIZE Set the size of a new buffer. */
+#define YDYNABIN_SIZE(s)	(!s ? 0 : \
+				 (s < (100 * MB) ? (s * 2) : (s + (100 * MB))))
+
 /*!
  * @struct      ydynabin_s
  *              Structure used for dynamic binary data transmission.
  * @field       data    Pointer to data itselves.
  * @field       len     Size of data.
  * @field	offset	Current reading offset.
+ * @field	free	Free size in the buffer.
  */
 struct ydynabin_s {
 	void *data;
 	size_t len;
 	size_t offset;
+	size_t free;
 };
 
 /*! @typedef ydynabin_t See struct ydynabin_s. */
