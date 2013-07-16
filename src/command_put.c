@@ -6,6 +6,7 @@
 #include "command_put.h"
 #include "protocol.h"
 #include "writer_thread.h"
+#include "database.h"
 
 /* Process a PUT command. */
 yerr_t command_put(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ybool_t compress, ydynabin_t *buff) {
@@ -53,11 +54,9 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ybool_t c
 	// creation of the message
 	if ((msg = YMALLOC(sizeof(writer_msg_t))) == NULL)
 		goto error;
-	msg->name = name;
-	msg->name_len = name_len;
+	ybin_set(&msg->name, name, name_len);
 	if (compress) {
-		msg->data = data;
-		msg->data_len = data_len;
+		ybin_set(&msg->data, data, data_len);
 	} else {
 		// data are not already compressed
 		memset(&zip_env, 0, sizeof(struct snappy_env));
@@ -75,25 +74,27 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ybool_t c
 			goto error;
 		}
 		zip_data[zip_len] = '\0';
-		YLOG_ADD(YLOG_DEBUG, "Compressed data : '%s' (%d) => '%s' (%d/%d)", data, data_len, zip_data, zip_len, strlen(zip_data));
 		snappy_free_env(&zip_env);
-		msg->data = zip_data;
-		msg->data_len = zip_len;
+		ybin_set(&msg->data, zip_data, zip_len);
 		YFREE(data);
 	}
-	// send the message to the writer thread
-	if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
-		YLOG_ADD(YLOG_WARN, "Unable to send message to writer thread.");
-		goto error;
+	if (!sync) {
+		// not synchronized, send the message to the writer thread
+		if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
+			YLOG_ADD(YLOG_WARN, "Unable to send message to writer thread.");
+			goto error;
+		}
+		return (YENOERR);
 	}
-	// wait for the answer
-	if (nn_recv(thread->write_sock, &answer, sizeof(answer), 0) < 0) {
-		YLOG_ADD(YLOG_WARN, "Unable to get answer from writer thread.");
-		goto error;
+	// synchronized
+	if (database_put(thread->finedb->database, msg->name, msg->data) == YENOERR) {
+		YLOG_ADD(YLOG_DEBUG, "Data written to database.");
+		answer = 1;
+	} else {
+		YLOG_ADD(YLOG_WARN, "Unable to write data into database.");
+		answer = 0;
 	}
 	YLOG_ADD(YLOG_DEBUG, "PUT command %s", (answer ? "OK" : "failed"));
-	if (!sync)
-		return (YENOERR);
 	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_NO_DATA),
 	                                 YFALSE, NULL, 0));
 error:

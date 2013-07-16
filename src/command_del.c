@@ -48,10 +48,8 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ydynabin_
 	// creation of the message
 	if ((msg = YMALLOC(sizeof(writer_msg_t))) == NULL)
 		goto error;
-	msg->name = name;
-	msg->name_len = name_len;
-	msg->data = data;
-	msg->data_len = data_len;
+	ybin_set(&msg->name, name, name_len);
+	ybin_set(&msg->data, data, data_len);
 	// send the message to the writer thread
 	if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
 		YLOG_ADD(YLOG_WARN, "Unable to send message to writer thread.");
