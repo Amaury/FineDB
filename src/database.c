@@ -31,7 +31,7 @@ void database_close(MDB_env *env) {
 }
 
 /* Add or update a key in database. */
-yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
+yerr_t database_put(MDB_env *env, const char *name, ybin_t key, ybin_t data) {
 	MDB_dbi dbi;
 	MDB_txn *txn;
 	MDB_val db_key, db_data;
@@ -44,7 +44,7 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle.", mdb_strerror(rc));
 		return (YEACCESS);
@@ -72,7 +72,7 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 }
 
 /* Remove a key from database. */
-yerr_t database_del(MDB_env *env, ybin_t key) {
+yerr_t database_del(MDB_env *env, const char *name, ybin_t key) {
 	MDB_dbi dbi;
 	MDB_txn *txn;
 	MDB_val db_key;
@@ -85,7 +85,7 @@ yerr_t database_del(MDB_env *env, ybin_t key) {
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle.", mdb_strerror(rc));
 		return (YEACCESS);
@@ -111,7 +111,7 @@ yerr_t database_del(MDB_env *env, ybin_t key) {
 }
 
 /* Get a key from database. */
-yerr_t database_get(MDB_env *env, ybin_t key, ybin_t *data) {
+yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data) {
 	MDB_dbi dbi;
 	MDB_txn *txn;
 	MDB_val db_key, db_data;
@@ -124,7 +124,7 @@ yerr_t database_get(MDB_env *env, ybin_t key, ybin_t *data) {
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
 		return (YEACCESS);

@@ -1,10 +1,5 @@
-/*
- * todo: Poll two different nanomsg sockets, for async and sync writings.
- * https://github.com/250bpm/nanomsg/blob/master/tests/poll.c
- */
 #include "nanomsg/nn.h"
 #include "nanomsg/fanin.h"
-//#include "nanomsg/reqrep.h"
 #include "lmdb.h"
 #include "ylog.h"
 #include "writer_thread.h"
@@ -17,7 +12,7 @@ void *writer_loop(void *param) {
 	int socket;
 
 	// create the nanomsg socket for threads communication
-	if ((socket = nn_socket(AF_SP, /*NN_REP*/NN_SINK)) < 0 ||
+	if ((socket = nn_socket(AF_SP, NN_SINK)) < 0 ||
 	    nn_bind(socket, ENDPOINT_WRITER_SOCKET) < 0) {
 		YLOG_ADD(YLOG_CRIT, "Unable to create socket in writer thread.");
 		exit(6);
@@ -32,7 +27,7 @@ void *writer_loop(void *param) {
 		if (msg->type == WRITE_PUT) {
 			// add data in database
 			YLOG_ADD(YLOG_DEBUG, "WRITE '%s' => '%s'", msg->name.data, msg->data.data);
-			if (database_put(finedb->database, msg->name, msg->data) == YENOERR)
+			if (database_put(finedb->database, msg->dbname, msg->name, msg->data) == YENOERR)
 				YLOG_ADD(YLOG_DEBUG, "Data written to database.");
 			else
 				YLOG_ADD(YLOG_WARN, "Unable to write data into database.");
@@ -40,12 +35,13 @@ void *writer_loop(void *param) {
 		} else if (msg->type == WRITE_DEL) {
 			// remove data from database
 			YLOG_ADD(YLOG_DEBUG, "DELETE '%s'", msg->name.data);
-			if (database_del(finedb->database, msg->name) == YENOERR)
+			if (database_del(finedb->database, msg->dbname, msg->name) == YENOERR)
 				YLOG_ADD(YLOG_DEBUG, "Data removed from database.");
 			else
 				YLOG_ADD(YLOG_WARN, "Unable to delete data into database.");
 		}
 		// free data
+		YFREE(msg->dbname);
 		YFREE(msg->name.data);
 		YFREE(msg);
 	}

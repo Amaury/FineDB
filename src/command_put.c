@@ -9,7 +9,9 @@
 #include "database.h"
 
 /* Process a PUT command. */
-yerr_t command_put(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ybool_t compress, ydynabin_t *buff) {
+yerr_t command_put(tcp_thread_t *thread, ybool_t has_dbname, ybool_t sync,
+                   ybool_t compress, ydynabin_t *buff) {
+	char *pdbname_len, dbname_len, *dbname = NULL;
 	uint16_t *pname_len, name_len;
 	uint32_t *pdata_len, data_len;
 	void *ptr, *name = NULL, *data = NULL;
@@ -20,6 +22,23 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ybool_t c
 	struct snappy_env zip_env;
 
 	YLOG_ADD(YLOG_DEBUG, "PUT command");
+	// read dbname if defined
+	if (has_dbname) {
+		YLOG_ADD(YLOG_DEBUG, "search for dbname");
+		// read dbname length
+		if (connection_read_data(thread->fd, buff, sizeof(dbname_len)) != YENOERR)
+			goto error;
+		pdbname_len = ydynabin_forward(buff, sizeof(dbname_len));
+		dbname_len = *pdbname_len;
+		// read dbname
+		if (connection_read_data(thread->fd, buff, (size_t)dbname_len) != YENOERR)
+			goto error;
+		ptr = ydynabin_forward(buff, (size_t)dbname_len);
+		if ((dbname = YMALLOC((size_t)dbname_len + 1)) == NULL)
+			goto error;
+		memcpy(dbname, ptr, (size_t)dbname_len);
+		YLOG_ADD(YLOG_DEBUG, "DBNAME : '%s'.", dbname);
+	}
 	// read name length
 	if (connection_read_data(thread->fd, buff, sizeof(name_len)) != YENOERR)
 		goto error;
@@ -80,6 +99,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ybool_t c
 	}
 	if (!sync) {
 		// not synchronized, send the message to the writer thread
+		msg->dbname = dbname;
 		if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
 			YLOG_ADD(YLOG_WARN, "Unable to send message to writer thread.");
 			goto error;
@@ -87,13 +107,14 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ybool_t c
 		return (YENOERR);
 	}
 	// synchronized
-	if (database_put(thread->finedb->database, msg->name, msg->data) == YENOERR) {
+	if (database_put(thread->finedb->database, dbname, msg->name, msg->data) == YENOERR) {
 		YLOG_ADD(YLOG_DEBUG, "Data written to database.");
 		answer = 1;
 	} else {
 		YLOG_ADD(YLOG_WARN, "Unable to write data into database.");
 		answer = 0;
 	}
+	YFREE(dbname);
 	YLOG_ADD(YLOG_DEBUG, "PUT command %s", (answer ? "OK" : "failed"));
 	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_NO_DATA),
 	                                 YFALSE, NULL, 0));
