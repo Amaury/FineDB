@@ -37,7 +37,7 @@ $timer->start();
 for ($i = 0; $i < $nbrLoops; $i++) {
 	foreach ($dataList as $key => $data) {
 		$sock = fsockopen(FINEDB_HOST, FINEDB_PORT);
-		commandPut($sock, false, false, "$key-$i", $data);
+		commandPut($sock, false, false, "$key-x$i", $data);
 		fclose($sock);
 	}
 }
@@ -64,7 +64,7 @@ $timer->stop();
 fclose($sock);
 print("GET       : " . $timer->getTime() . "\n");
 
-exit();
+//exit();
 
 // Couchbase
 print(Ansi::bold("Couchbase\n"));
@@ -141,7 +141,7 @@ function commandPut($sock, $sync, $compress, $key, $data) {
 		  pack('N', mb_strlen($data, 'ascii')) . $data;
 	fwrite($sock, $buffer);
 	$response = fread($sock, 4096);
-	showResponse($response);
+	//showResponse($response);
 }
 /**
  * Fetch data from FineDB server.
@@ -156,12 +156,12 @@ function commandGet($sock, $compress, $key, $check=null) {
 	fwrite($sock, $buffer);
 	$response = fread($sock, 4096);
 	//showResponse($response);
-	/**/
+	/*
 	$response = mb_substr($response, 5, 4096, 'ascii');
 	if (isset($check) && $response != $check)
 		print("ERR GET '$key' => '$response' (instead of '$check')\n");
 	print("'$key' => '$response'\n");
-	/**/
+	*/
 }
 /**
  * Show the status of a response from FineDB server.

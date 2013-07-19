@@ -51,6 +51,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t has_dbname, ybool_t sync,
 	if ((name = YMALLOC((size_t)name_len)) == NULL)
 		goto error;
 	memcpy(name, ptr, (size_t)name_len);
+	YLOG_ADD(YLOG_DEBUG, "NAME : '%s'.", name);
 	// read data length
 	if (connection_read_data(thread->fd, buff, sizeof(data_len)) != YENOERR)
 		goto error;
@@ -64,6 +65,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t has_dbname, ybool_t sync,
 		if ((data = YMALLOC((size_t)data_len)) == NULL)
 			goto error;
 		memcpy(data, ptr, (size_t)data_len);
+		YLOG_ADD(YLOG_DEBUG, "DATA : '%s'.", data);
 	}
 
 	// not synchronized: immediate response

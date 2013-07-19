@@ -10,9 +10,11 @@
 /**
  * Open a LMDB database.
  * @param	path	Path to the database data directory.
+ * @param	mapsize	Database map size.
+ * @param	nbr_dbs	Maximum number of opened databases.
  * @return	A pointer to the allocated environment, or NULL.
  */
-MDB_env *database_open(const char *path);
+MDB_env *database_open(const char *path, size_t mapsize, unsigned int nbr_dbs);
 
 /**
  * Close a database and free its structure.

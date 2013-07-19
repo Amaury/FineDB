@@ -8,7 +8,8 @@
 
 /* Initialize a finedb structure. */
 finedb_t *finedb_init(const char *db_path, unsigned short port,
-                      unsigned short nbr_threads) {
+                      unsigned short nbr_threads, size_t mapsize,
+                      unsigned int nbr_dbs) {
 	finedb_t *finedb = NULL;
 	unsigned short i;
 
@@ -22,7 +23,7 @@ finedb_t *finedb_init(const char *db_path, unsigned short port,
 	finedb->tcp_threads = yv_create(YVECT_SIZE_MEDIUM);
 
 	// open database
-	finedb->database = database_open(db_path);
+	finedb->database = database_open(db_path, mapsize, nbr_dbs);
 	if (finedb->database == NULL) {
 		YLOG_ADD(YLOG_CRIT, "Unable to open database.");
 		exit(1);

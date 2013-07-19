@@ -197,7 +197,6 @@ void command_put(cli_t *cli, char *pt) {
 		return;
 	}
 	*pt2 = '\0';
-	printf("PUT '%s' => '%s'\n", key, data);
 
 	// create sending buffer
 	sz = 1;
@@ -239,12 +238,13 @@ void command_put(cli_t *cli, char *pt) {
 	{
 		size_t n;
 		for (n = 0; n < sz; n++)
-			printf("%x ", buffer[n]);
+			printf("%02x ", buffer[n]);
 		printf("\n");
 	}
 
 	// send data
 	write(cli->fd, buffer, sz);
+	YFREE(buffer);
 
 	// get response
 	read(cli->fd, &c, 1);
@@ -258,7 +258,86 @@ void command_put(cli_t *cli, char *pt) {
 }
 
 void command_get(cli_t *cli, char *pt) {
+	char *pt2, *key, *data;
+	char *buffer, c, buff[5];
+	size_t sz, offset, length;
+	uint16_t length16;
+	uint32_t length32;
 
+	LTRIM(pt);
+	if (*pt != '"') {
+		printf("%c[2mBad key format (no quote)\n%c[0m", 27, 27);
+		return;
+	}
+	pt++;
+	if (!*pt) {
+		printf("%c[2mBad key\n%c[0m", 27, 27);
+		return;
+	}
+	key = pt2 = pt;
+	pt2 = pt;
+	if ((pt2 = strchr(pt2, '"')) == NULL) {
+		printf("%c[2mBad key format (no trailing quote)\n%c[0m", 27, 27);
+		return;
+	}
+	*pt2 = '\0';
+	printf("GET '%s'\n", key);
+
+	// create sending buffer
+	sz = 1;
+	if (cli->dbname)
+		sz += 1 + strlen(cli->dbname);
+	sz += sizeof(uint16_t) + strlen(key);
+	buffer = YMALLOC(sz);
+	// set the code byte
+	buffer[0] = PROTO_GET;
+	if (cli->sync)
+		buffer[0] = REQUEST_ADD_SYNC(buffer[0]);
+	if (cli->dbname)
+		buffer[0] = REQUEST_ADD_DBNAME(buffer[0]);
+	// dbname
+	offset = 1;
+	if (cli->dbname) {
+		length = strlen(cli->dbname);
+		buffer[offset] = (char)length;
+		offset++;
+		memcpy(&buffer[offset], cli->dbname, length);
+		offset += length;
+	}
+	// key
+	length = strlen(key);
+	length16 = htons((uint16_t)length);
+	memcpy(&buffer[offset], &length16, sizeof(length16));
+	offset += sizeof(length16);
+	memcpy(&buffer[offset], key, length);
+
+	{
+		size_t n;
+		for (n = 0; n < sz; n++)
+			printf("%02x ", buffer[n]);
+		printf("\n");
+	}
+
+	// send data
+	write(cli->fd, buffer, sz);
+	YFREE(buffer);
+
+	// get response
+	read(cli->fd, &buff, 5);
+	if (RESPONSE_CODE(buff[0]) != RESP_OK) {
+		printf("%c[2mERROR: %s%c[0m\n", 27,
+		       (RESPONSE_CODE(buff[0]) == RESP_PROTO ? "protocol" :
+		        (RESPONSE_CODE(buff[0]) == RESP_SERVER_ERR ? "server" :
+		         (RESPONSE_CODE(buff[0]) == RESP_NO_DATA ? "no data" : "unknown"))), 27);
+		return;
+	}
+	printf("%c[2mOK%c[0m\n", 27, 27);
+	memcpy(&length32, &buff[1], sizeof(length32));
+	length = (size_t)ntohl(length32);
+	buffer = YMALLOC(length + 1);
+	read(cli->fd, buffer, length);
+	printf("%c[2m%s%c[0m\n", 27, buffer, 27);
+	YFREE(buffer);
 }
 
 void command_del(cli_t *cli, char *pt) {

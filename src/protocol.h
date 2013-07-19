@@ -11,7 +11,7 @@
 /* **************** REQUEST READING ************* */
 
 /** @define REQUEST_COMMAND Extract the command from other options. */
-#define REQUEST_COMMAND(c)		(c & 1)
+#define REQUEST_COMMAND(c)		(c & 3)
 
 /** @define REQUEST_HAS_SYNC Extract the sync option from a request. */
 #define REQUEST_HAS_SYNC(c)		(c & PROTO_OPT_SYNC)
@@ -53,15 +53,22 @@
 /** @define REQUEST_ADD_SERVTOSERV Add the server-to-server option to a request code. */
 #define REQUEST_ADD_SERVTOSERV(c)	(c | PROTO_OPT_SERVTOSERV)
 
+/* **************** RESPONSE READING *************** */
+
+/** @define RESPONSE_CODE Extract the code from a response. */
+#define RESPONSE_CODE(c)		(c & 0x7) // 0b00000111
+
 /**
  * @typedef	protocol_command_t
  *		List of protocol commands.
  * @constant	PROTO_GET	GET command.
  * @constant	PROTO_PUT	PUT command.
+ * @constant	PROTO_LIST	LIST command.
  */
 typedef enum protocol_command_e {
 	PROTO_GET	= 0,
-	PROTO_PUT	= 1
+	PROTO_PUT	= 1,
+	PROTO_LIST	= 2
 } protocol_command_t;
 
 /**

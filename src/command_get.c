@@ -18,7 +18,7 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t has_dbname, ybool_t compress, y
 
 	YLOG_ADD(YLOG_DEBUG, "GET command");
 	// read dbname if defined
-	if (dbname) {
+	if (has_dbname) {
 		// read dbname length
 		if (connection_read_data(thread->fd, buff, sizeof(dbname_len)) != YENOERR)
 			goto error;

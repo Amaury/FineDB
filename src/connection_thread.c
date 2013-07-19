@@ -86,6 +86,12 @@ void *connection_thread_execution(void *param) {
 			         REQUEST_COMMAND(*command), (sync ? 1 : 0),
 			         (compress ? 1 : 0), (dbname ? 1 : 0));
 			switch (REQUEST_COMMAND(*command)) {
+			case PROTO_LIST:
+				// LIST command
+				YLOG_ADD(YLOG_DEBUG, "LIST command");
+				if (command_list(thread, dbname, compress, buff) != YENOERR)
+					goto end_of_connection;
+				break;
 			case PROTO_GET:
 				// GET command
 				YLOG_ADD(YLOG_DEBUG, "GET command");
