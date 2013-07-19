@@ -18,6 +18,8 @@
 #define DEFAULT_DB_PATH		"../var/database"
 /** @const DEFAULT_PORT Default port number. */
 #define DEFAULT_PORT		11138
+/** @const DEFAULT_MAPSIZE Default map size (10 MB). */
+#define DEFAULT_MAPSIZE		10485760
 
 /** @const ENDPOINT_THREADS_SOCKET Threads' connection endpoint. */
 #define ENDPOINT_THREADS_SOCKET	"inproc://threads_socket"
@@ -47,10 +49,13 @@ typedef struct finedb_s {
  * @param	db_path		Path to the database directory.
  * @param	port		Port number to listen to.
  * @param	nbr_threads	Number of connection threads.
+ * @param	mapsize		Maximum size of the database.
+ * @param	nbr_dbs		Maximum number of opened databases.
  * @return	A pointer to the allocated structure.
  */
 finedb_t *finedb_init(const char *db_path, unsigned short port,
-                      unsigned short nbr_threads);
+                      unsigned short nbr_threads, size_t mapsize,
+                      unsigned int nbr_dbs);
 
 /**
  * Starts a finedb run.

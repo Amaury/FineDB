@@ -4,7 +4,6 @@
 #include <arpa/inet.h>
 #include "nanomsg/nn.h"
 #include "nanomsg/fanin.h"
-//#include "nanomsg/reqrep.h"
 #include "nanomsg/fanout.h"
 #include "ydefs.h"
 #include "ylog.h"
@@ -48,7 +47,7 @@ void *connection_thread_execution(void *param) {
 	YLOG_ADD(YLOG_DEBUG, "Thread loop.");
 	thread = (tcp_thread_t*)param;
 	// opening a connection to the writer thread
-	if ((thread->write_sock = nn_socket(AF_SP, /*NN_REQ*/NN_SOURCE)) < 0 ||
+	if ((thread->write_sock = nn_socket(AF_SP, NN_SOURCE)) < 0 ||
 	    nn_connect(thread->write_sock, ENDPOINT_WRITER_SOCKET) < 0) {
 		YLOG_ADD(YLOG_WARN, "Unable to connect to writer's socket.");
 		pthread_exit(NULL);
@@ -83,10 +82,16 @@ void *connection_thread_execution(void *param) {
 			sync = REQUEST_HAS_SYNC(*command) ? YTRUE : YFALSE;
 			compress = REQUEST_HAS_COMPRESS(*command) ? YTRUE : YFALSE;
 			dbname = REQUEST_HAS_DBNAME(*command) ? YTRUE : YFALSE;
-			YLOG_ADD(YLOG_DEBUG, "---Req: '%x' - sync: %d - comp: %d\n",
+			YLOG_ADD(YLOG_DEBUG, "---Req: '%x' - sync: %d - comp: %d - dbname: %d\n",
 			         REQUEST_COMMAND(*command), (sync ? 1 : 0),
-			         (compress ? 1 : 0));
+			         (compress ? 1 : 0), (dbname ? 1 : 0));
 			switch (REQUEST_COMMAND(*command)) {
+			case PROTO_LIST:
+				// LIST command
+				YLOG_ADD(YLOG_DEBUG, "LIST command");
+				if (command_list(thread, dbname, compress, buff) != YENOERR)
+					goto end_of_connection;
+				break;
 			case PROTO_GET:
 				// GET command
 				YLOG_ADD(YLOG_DEBUG, "GET command");

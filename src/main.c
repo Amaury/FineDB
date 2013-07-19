@@ -26,8 +26,10 @@ static void signal_handler(int signal);
 
 /** Usage function. */
 static void usage() {
-	printf("Usage: finedb [-t number] [-p port] [-f path] [-h] [-d]\n"
+	printf("Usage: finedb [-t number] [-n number] [-s number] [-p port] [-f path] [-h] [-d]\n"
 		"\t-t number    Set the number of connection threads.\n"
+		"\t-n number	Set the maximum number of opened databases.\n"
+		"\t-s number	Set the database map size (maximum size on disk).\n"
 		"\t-p port      Listening port number.\n"
 		"\t-f path      Path to the database directory.\n"
 		"\t-h           Shows this help and exits.\n"
@@ -49,8 +51,10 @@ static void signal_handler(int sig) {
  * Main function of the program.
  */
 int main(int argc, char *argv[]) {
-	char *optstr = "dht:f:p:";
+	char *optstr = "dht:n:s:f:p:";
 	int i;
+	unsigned int nbr_dbs = 1;
+	size_t mapsize = DEFAULT_MAPSIZE;
 	unsigned short nbr_threads = DEFAULT_NBR_THREADS;
 	unsigned short port = DEFAULT_PORT;
 	char *db_path = DEFAULT_DB_PATH;
@@ -67,6 +71,12 @@ int main(int argc, char *argv[]) {
 		case 't':
 			nbr_threads = (unsigned short)atoi(optarg);
 			break;
+		case 'n':
+			nbr_dbs = (unsigned int)atoi(optarg);
+			break;
+		case 's':
+			mapsize = (size_t)atoi(optarg);
+			break;
 		case 'p':
 			port = (unsigned short)atoi(optarg);
 			break;
@@ -81,11 +91,12 @@ int main(int argc, char *argv[]) {
 			exit(0);
 		}
 	}
-	YLOG_ADD(YLOG_DEBUG, "Configuration\n\tNumber of threads: %d\n"
-	         "\tPort number: %d\n\tDatabase path: %s", nbr_threads, port,
+	YLOG_ADD(YLOG_DEBUG, "Configuration\n\t# threads: %d\n"
+	         "\t# dbs: %d\n\tMap size: %d\n\tPort number: %d\n"
+	         "\tDatabase path: %s", nbr_threads, nbr_dbs, mapsize, port,
 	         db_path);
 	// FineDB structure init
-	finedb = finedb_init(db_path, port, nbr_threads);
+	finedb = finedb_init(db_path, port, nbr_threads, mapsize, nbr_dbs);
 	finedb_g = finedb;
 	// FineDB run
 	finedb_start(finedb);

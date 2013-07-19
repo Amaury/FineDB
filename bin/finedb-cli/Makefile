@@ -6,5 +6,5 @@ clean:
 	rm -f finedb-cli
 
 finedb-cli: finedb-cli.c
-	gcc finedb-cli.c -I../../include -o finedb-cli
+	gcc finedb-cli.c -I../../include -I../../src ../../lib/liby.a -o finedb-cli
 

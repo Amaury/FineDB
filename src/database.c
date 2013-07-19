@@ -1,7 +1,7 @@
 #include "database.h"
 
 /* Open a LMDB database. */
-MDB_env *database_open(const char *path) {
+MDB_env *database_open(const char *path, size_t mapsize, unsigned int nbr_dbs) {
 	MDB_env *env;
 	int rc;
 
@@ -9,13 +9,27 @@ MDB_env *database_open(const char *path) {
 	// environment initialization
 	rc = mdb_env_create(&env);
 	if (rc) {
-		YLOG_ADD(YLOG_ERR, "Unable to open database on '%s'.", path);
+		YLOG_ADD(YLOG_ERR, "Unable to open database on '%s' (%s).", path, mdb_strerror(rc));
 		return (NULL);
+	}
+	// environment mapsize
+	rc = mdb_env_set_mapsize(env, mapsize);
+	if (rc) {
+		YLOG_ADD(YLOG_ERR, "Unable to set mapsize to %d (%s).", mapsize, mdb_strerror(rc));
+		return (NULL);
+	}
+	// setting the maximum number of opened databases
+	if (nbr_dbs > 1) {
+		rc = mdb_env_set_maxdbs(env, nbr_dbs);
+		if (rc) {
+			YLOG_ADD(YLOG_ERR, "Unable to set max dbs (%s).", mdb_strerror(rc));
+			return (NULL);
+		}
 	}
 	// opening database
 	rc = mdb_env_open(env, path, MDB_WRITEMAP | MDB_NOTLS, 0664);
 	if (rc) {
-		YLOG_ADD(YLOG_ERR, "Unable to open database environment.");
+		YLOG_ADD(YLOG_ERR, "Unable to open database environmenti (%s).", mdb_strerror(rc));
 		mdb_env_close(env);
 		return (NULL);
 	}
@@ -31,7 +45,7 @@ void database_close(MDB_env *env) {
 }
 
 /* Add or update a key in database. */
-yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
+yerr_t database_put(MDB_env *env, const char *name, ybin_t key, ybin_t data) {
 	MDB_dbi dbi;
 	MDB_txn *txn;
 	MDB_val db_key, db_data;
@@ -40,13 +54,13 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 	// transaction init
 	rc = mdb_txn_begin(env, NULL, 0, &txn);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction.", mdb_strerror(rc));
+		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	rc = mdb_dbi_open(txn, name, MDB_CREATE, &dbi);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to open database handle.", mdb_strerror(rc));
+		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// key and data init
@@ -57,13 +71,13 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 	// put data
 	rc = mdb_put(txn, dbi, &db_key, &db_data, 0);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to write data in database.", mdb_strerror(rc));
+		YLOG_ADD(YLOG_WARN, "Unable to write data in database (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// transaction commit
 	rc = mdb_txn_commit(txn);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to commit transaction.", mdb_strerror(rc));
+		YLOG_ADD(YLOG_WARN, "Unable to commit transaction (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// close database
@@ -72,7 +86,7 @@ yerr_t database_put(MDB_env *env, ybin_t key, ybin_t data) {
 }
 
 /* Remove a key from database. */
-yerr_t database_del(MDB_env *env, ybin_t key) {
+yerr_t database_del(MDB_env *env, const char *name, ybin_t key) {
 	MDB_dbi dbi;
 	MDB_txn *txn;
 	MDB_val db_key;
@@ -81,13 +95,13 @@ yerr_t database_del(MDB_env *env, ybin_t key) {
 	// transaction init
 	rc = mdb_txn_begin(env, NULL, 0, &txn);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction.", mdb_strerror(rc));
+		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to open database handle.", mdb_strerror(rc));
+		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// key and data init
@@ -96,13 +110,13 @@ yerr_t database_del(MDB_env *env, ybin_t key) {
 	// put data
 	rc = mdb_del(txn, dbi, &db_key, NULL);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to write data in database.", mdb_strerror(rc));
+		YLOG_ADD(YLOG_WARN, "Unable to write data in database (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// transaction commit
 	rc = mdb_txn_commit(txn);
 	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to commit transaction.", mdb_strerror(rc));
+		YLOG_ADD(YLOG_WARN, "Unable to commit transaction (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
 	// close database
@@ -111,7 +125,7 @@ yerr_t database_del(MDB_env *env, ybin_t key) {
 }
 
 /* Get a key from database. */
-yerr_t database_get(MDB_env *env, ybin_t key, ybin_t *data) {
+yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data) {
 	MDB_dbi dbi;
 	MDB_txn *txn;
 	MDB_val db_key, db_data;
@@ -124,7 +138,7 @@ yerr_t database_get(MDB_env *env, ybin_t key, ybin_t *data) {
 		return (YEACCESS);
 	}
 	// open database in read-write mode
-	rc = mdb_dbi_open(txn, NULL, 0, &dbi);
+	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
 		return (YEACCESS);
