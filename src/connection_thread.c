@@ -14,6 +14,7 @@
 #include "command_put.h"
 #include "command_get.h"
 #include "command_del.h"
+#include "command_list.h"
 
 /* Create a new connection thread. */
 tcp_thread_t *connection_thread_new(finedb_t *finedb) {
@@ -89,7 +90,7 @@ void *connection_thread_execution(void *param) {
 			case PROTO_LIST:
 				// LIST command
 				YLOG_ADD(YLOG_DEBUG, "LIST command");
-				if (command_list(thread, dbname, compress, buff) != YENOERR)
+				if (command_list(thread, dbname, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_GET:

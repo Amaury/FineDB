@@ -7,6 +7,9 @@
 #include "yerror.h"
 #include "ylog.h"
 
+/** Callback function for DB list. */
+typedef yerr_t (*database_callback)(void *ptr, ybin_t key, ybin_t data);
+
 /**
  * Open a LMDB database.
  * @param	path	Path to the database data directory.
@@ -50,5 +53,15 @@ yerr_t database_del(MDB_env *env, const char *name, ybin_t key);
  * @return	YENOERR if OK.
  */
 yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data);
+
+/**
+ * Loop through the key/value pairs of a database.
+ * @param	env	Database environment.
+ * @param	name	Database name. NULL for the default DB.
+ * @param	cb	Callback function, used on every key/value.
+ * @param	cb_data	Pointer to private data for the callback function.
+ * @return	YENOERR if OK.
+ */
+yerr_t database_list(MDB_env *env, const char *name, database_callback cb, void *cb_data);
 
 #endif /* __DATABASE_H__ */

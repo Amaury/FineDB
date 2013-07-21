@@ -161,3 +161,47 @@ yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data) {
 	data->data = db_data.mv_data;
 	return (YENOERR);
 }
+
+/* Open a cursor on a database, and send every key/value pair to a callback. */
+yerr_t database_list(MDB_env *env, const char *name, database_callback cb, void *cb_data) {
+	MDB_dbi dbi;
+	MDB_txn *txn;
+	MDB_cursor *cursor;
+	MDB_val db_key, db_data;
+	int rc;
+
+	// transaction init
+	rc = mdb_txn_begin(env, NULL, MDB_RDONLY, &txn);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
+		return (YEACCESS);
+	}
+	// open database in read-write mode
+	rc = mdb_dbi_open(txn, name, 0, &dbi);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
+		return (YEACCESS);
+	}
+	// open cursor
+	rc = mdb_cursor_open(txn, dbi, &cursor);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to open cursor on database (%s).", mdb_strerror(rc));
+		return (YEACCESS);
+	}
+	// loop on cursor
+	while ((rc = mdb_cursor_get(cursor, &db_key, &db_data, MDB_NEXT)) == 0) {
+		ybin_t key, data;
+
+		ybin_set(&key, db_key.mv_data, db_key.mv_size);
+		ybin_set(&data, db_data.mv_data, db_data.mv_size);
+		if (cb(cb_data, key, data) != YENOERR)
+			break;
+	}
+	// close cursor
+	mdb_cursor_close(cursor);
+	// end of transaction
+	mdb_txn_abort(txn);
+	// close database
+	mdb_dbi_close(env, dbi);
+	return (YENOERR);
+}

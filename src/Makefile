@@ -13,7 +13,8 @@ SRC	=	main.c			\
 		connection_thread.c	\
 		command_get.c		\
 		command_put.c		\
-		command_del.c
+		command_del.c		\
+		command_list.c
 
 # ###################################################################
 

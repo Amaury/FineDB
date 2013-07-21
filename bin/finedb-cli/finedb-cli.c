@@ -42,6 +42,7 @@ void command_help(void);
 void command_get(cli_t *cli, char *pt);
 void command_put(cli_t *cli, char *pt);
 void command_del(cli_t *cli, char *pt);
+void command_list(cli_t *cli, char *pt);
 void command_use(cli_t *cli, char *pt);
 void command_sync(cli_t *cli);
 void command_async(cli_t *cli);
@@ -101,6 +102,8 @@ int main(int argc, char *argv[]) {
 			command_get(cli, pt);
 		else if (!strcasecmp(cmd, "del"))
 			command_del(cli, pt);
+		else if (!strcasecmp(cmd, "list"))
+			command_list(cli, pt);
 		else if (!strcasecmp(cmd, "use"))
 			command_use(cli, pt);
 		else if (!strcasecmp(cmd, "sync"))
@@ -281,7 +284,6 @@ void command_get(cli_t *cli, char *pt) {
 		return;
 	}
 	*pt2 = '\0';
-	printf("GET '%s'\n", key);
 
 	// create sending buffer
 	sz = 1;
@@ -344,50 +346,63 @@ void command_del(cli_t *cli, char *pt) {
 
 }
 
-#if 0
+void command_list(cli_t *cli, char *pt) {
+	char *pt2, *key, *data;
+	char *buffer, c;
+	size_t sz, offset, length;
+	uint16_t length16;
 
-	// loop on key/data pairs
-	for (i = 2; i < argc; i += 1) {
-		bufsz = 0;
-		/* create message */
-		// command
-		buff[0] = 2;
-		bufsz += 1;
-		// name length
-		size = strlen(argv[i]) + 1;
-		name_len = htons(size);
-		memcpy(&buff[1], &name_len, sizeof(uint16_t));
-		bufsz += sizeof(uint16_t);
-		// name
-		memcpy(&buff[bufsz], argv[i], size);
-		bufsz += size;
-		/* write message */
-		write(sockfd, buff, bufsz);
-		/* get response */
-		size = read(sockfd, buff, 8196);
-		cmd = buff;
-		if (*cmd != 64) {
-			size_t offset;
-			char *c;
-			
-			printf("ERROR (%d) for key '%s'\n", (int)*cmd, argv[i]);
-			printf("\t'");
-			for (offset = 0; offset < size; ++offset) {
-				c = &buff[offset];
-				if (*c >= ' ' && *c <= '~')
-					printf("%c", *c);
-				else
-					printf("%x", (int)*c);
-				if (offset == 0 || offset == 4)
-					printf(" ");
-			}
-			printf("'\n");
-			continue;
-		}
-		pdata_len = (uint32_t*)&buff[1];
-		data_len = ntohl(*pdata_len);
-		buff[data_len + 6] = '\0';
-		printf("OK key '%s' (%d) => '%s'\n", argv[i], data_len, &buff[5]);
+	LTRIM(pt);
+	// create sending buffer
+	sz = 1;
+	if (cli->dbname)
+		sz += 1 + strlen(cli->dbname);
+	buffer = YMALLOC(sz);
+	// set the code byte
+	buffer[0] = PROTO_LIST;
+	if (cli->dbname)
+		buffer[0] = REQUEST_ADD_DBNAME(buffer[0]);
+	// dbname
+	offset = 1;
+	if (cli->dbname) {
+		length = strlen(cli->dbname);
+		buffer[offset] = (char)length;
+		offset++;
+		memcpy(&buffer[offset], cli->dbname, length);
+		offset += length;
 	}
+	{
+		size_t n;
+		for (n = 0; n < sz; n++)
+			printf("%02x ", buffer[n]);
+		printf("\n");
+	}
+
+	// send data
+	write(cli->fd, buffer, sz);
+	YFREE(buffer);
+
+	// get response
+	read(cli->fd, &c, 1);
+	if (RESPONSE_CODE(c) != RESP_OK) {
+		printf("%c[2mERROR: %s%c[0m\n", 27,
+		       (RESPONSE_CODE(c) == RESP_PROTO ? "protocol" :
+		        (RESPONSE_CODE(c) == RESP_SERVER_ERR ? "server" :
+		         (RESPONSE_CODE(c) == RESP_NO_DATA ? "no data" : "unknown"))), 27);
+		return;
+	}
+	printf("%c[2mOK%c[0m\n", 27, 27);
+	for (; ; ) {
+		uint16_t ln = 0, lh;
+		char *c;
+
+		if (read(cli->fd, &ln, 2) < 2)
+			break;
+		lh = ntohs(ln);
+		buffer = YMALLOC(lh + 1);
+		read(cli->fd, buffer, lh);
+		printf("%c[2m%s%c[0m\n", 27, buffer, 27);
+		YFREE(buffer);
+	}
+	YFREE(buffer);
 }
-#endif
