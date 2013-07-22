@@ -1,21 +1,31 @@
-CFLAGS := -Wall -g -O2 -DNDEBUG=1  -DSG=1
+SONAME		= libsnappy.so
+SRC		= snappy.c
+INCLUDES	= snappy.h
+
+CFLAGS := -Wall -g -O2 -DNDEBUG=1  -DSG=1 -fPIC
 # Remove -DSG=1 if you don't need scather-gather support
 # NDEBUG=1 is recommended for production
 
+# Link options
+LDFLAGS	= -shared -Wl,-soname,$(SONAME)
+
+CC	= gcc
+OBJS	= $(SRC:.c=.o)
+
 .PHONY: all clean lib
 
-lib: snappy.o
-	ar -r libsnappy.a snappy.o
-	ranlib libsnappy.a
-	cp libsnappy.a ../
-	cp snappy.h ../../include/
+lib: $(OBJS) $(SRC)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(SONAME)
+	cp $(SONAME) ../
+	cp $(INCLUDES) ../../include/
 
 all: clean lib
 
-snappy.o: snappy.c
-
 clean: 
-	rm -f snappy.o libsnappy.a
-	rm -f ../libsnappy.a
-	rm -f ../../include/snappy.h
+	rm -f $(OBJS) $(SONAME) *~
+	rm -f ../$(SONAME)
+	cd ../../include ; rm -f $(INCLUDES)
+
+.c.o:
+	$(CC) $(CFLAGS) -c $<
 

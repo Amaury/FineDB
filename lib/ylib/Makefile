@@ -2,19 +2,19 @@
 #                              Makefile
 # #####################################################################
 
-# Library's static name (libNAME.a)
-NAME	=	liby.a
+# Library's name
+SONAME =	liby.so
 
-# Name of source files (names.c)
-SRC       =	yvect.c		\
+# Name of source files
+SRC =		yvect.c		\
 		ystr.c		\
 		ylog.c		\
 		ybin.c		\
 		ydynabin.c	\
 		ylist.c
 
-# Name of header files (names.h)
-HEADS     =	ydefs.h		\
+# Name of header files
+INCLUDES =	ydefs.h		\
 		yerror.h	\
 		ystr.h		\
 		ylog.h		\
@@ -42,21 +42,22 @@ OBJS    =	$(SRC:.c=.o)
 CFLAGS  =	-ansi -std=c99 -pedantic -Wall -Wextra -Wmissing-prototypes \
 		  -Wno-long-long -Wno-pointer-arith $(IPATH) -D_GNU_SOURCE \
 		  -D_LARGEFILE_SOURCE -D_THREAD_SAFE -fPIC
+# Link options
+LDFLAGS = -shared -Wl,-soname,$(SONAME)
 
 # #####################################################################
 
 .PHONY: clean all
 
-$(NAME): $(OBJS) $(SRC)
-	ar -r $(NAME) $(OBJS)
-	ranlib $(NAME)
-	cp $(NAME) ../
-	cp $(HEADS) ../../include/
+$(SONAME): $(OBJS) $(SRC)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(SONAME)
+	cp $(SONAME) ../
+	cp $(INCLUDES) ../../include/
 
 clean:
-	$(RM) $(OBJS) $(NAME) *~
-	rm -f ../$(NAME)
-	for i in $(HEADS); do rm -f ../../include/$$i; done
+	$(RM) $(OBJS) $(SONAME) *~
+	$(RM) ../$(SONAME)
+	cd ../../include ; $(RM) $(INCLUDES)
 
 all: clean $(NAME)
 

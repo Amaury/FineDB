@@ -6,6 +6,7 @@
 NAME	=	finedb
 # Source files
 SRC	=	main.c			\
+		self_path.c		\
 		finedb.c		\
 		database.c		\
 		server.c		\
@@ -21,7 +22,7 @@ SRC	=	main.c			\
 # Paths to header files
 IPATH	= -I. -I../include
 # Path to libraries and lib's names
-LDPATH	= -L. -L../lib -llmdb -lnanomsg -lsnappy -ly -lpthread -lrt
+LDPATH	= -L. -L../lib -llmdb -lnanomsg -lsnappy -ly -lpthread -lrt -Wl,-rpath -Wl,'$$ORIGIN/../lib'
 # Compiler options
 EXEOPT	= -O3 # -g for debug
 

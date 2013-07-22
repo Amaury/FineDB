@@ -1,38 +1,31 @@
+SONAME		= liblmdb.so
+SRC		= mdb.c \
+		  midl.c
+INCLUDES	= lmdb.h
+
 CC	= gcc
 W	= -W -Wall -Wno-unused-parameter -Wbad-function-cast
-OPT = -O2 -g
-CFLAGS	= -pthread $(OPT) $(W) $(XCFLAGS)
-LDLIBS	=
-SOLIBS	=
-prefix	= /usr/local
+OPT	= -O2 -g
+CFLAGS	= -pthread $(OPT) $(W) $(XCFLAGS) -fPIC
+# link options
+LDFLAGS	= -shared -Wl,-soname,$(SONAME)
 
-IHDRS	= lmdb.h
-ILIBS	= liblmdb.a liblmdb.so
-#all:	$(ILIBS) $(PROGS)
+OBJS	= $(SRC:.c=.o)
 
-.PHONY: all clean
+.PHONY: all clean lib
 
-liblmdb.a:	mdb.o midl.o
-	ar rs $@ mdb.o midl.o
-	cp $@ ../
-	cp lmdb.h ../../include/
+lib: $(OBJS) $(SRC)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(SONAME)
+	cp $(SONAME) ../
+	cp $(INCLUDES) ../../include/
 
-all: clean liblmdb.a
+all: clean lib
 
 clean:
-	rm -rf *.[ao] *.so *~ testdb
-	rm -f ../liblmdb.a
-	rm -f ../../include/lmdb.h
+	rm -f $(OBJS) $(SONAME) *~
+	rm -f ../$(SONAME)
+	cd ../../include ; rm -f $(INCLUDES)
 
-mdb.o: mdb.c lmdb.h midl.h
-	$(CC) $(CFLAGS) -fPIC $(CPPFLAGS) -c mdb.c
-
-midl.o: midl.c midl.h
-	$(CC) $(CFLAGS) -fPIC $(CPPFLAGS) -c midl.c
-
-%:	%.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
-
-%.o:	%.c lmdb.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+.c.o:
+	$(CC) $(CFLAGS) -c $<
 

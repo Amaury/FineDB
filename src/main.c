@@ -16,6 +16,7 @@
 #include "server.h"
 //#include "connection_thread.h"
 //#include "writer_thread.h"
+#include "self_path.h"
 
 /* Global variable used by signal handlers. */
 finedb_t *finedb_g = NULL;
