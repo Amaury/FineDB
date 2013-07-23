@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 	struct sockaddr_in serv_addr;
 	struct hostent *server;
 	cli_t *cli;
-	char buff[8196], *cmd;
+	char buff[8196];
 	size_t bufsz;
 	
 	if (argc == 1) {
@@ -156,7 +156,7 @@ void command_help() {
 void command_put(cli_t *cli, char *pt) {
 	char *pt2, *key, *data;
 	char *buffer, c;
-	size_t sz, offset, length;
+	size_t sz, offset, length, rc;
 	uint16_t length16;
 	uint32_t length32;
 
@@ -246,11 +246,18 @@ void command_put(cli_t *cli, char *pt) {
 	}
 
 	// send data
-	write(cli->fd, buffer, sz);
+	rc = write(cli->fd, buffer, sz);
 	YFREE(buffer);
+	if (rc != sz) {
+		printf("%c[1Connection error%c[0m\n", 27, 27);
+		return;
+	}
 
 	// get response
-	read(cli->fd, &c, 1);
+	if (read(cli->fd, &c, 1) != 1) {
+		printf("%c[1Connection error%c[0m\n", 27, 27);
+		return;
+	}
 	if (c == RESP_OK)
 		printf("%c[2mOK%c[0m\n", 27, 27);
 	else
@@ -261,9 +268,9 @@ void command_put(cli_t *cli, char *pt) {
 }
 
 void command_get(cli_t *cli, char *pt) {
-	char *pt2, *key, *data;
-	char *buffer, c, buff[5];
-	size_t sz, offset, length;
+	char *pt2, *key;
+	char *buffer, buff[5];
+	size_t sz, offset, length, rc;
 	uint16_t length16;
 	uint32_t length32;
 
@@ -321,11 +328,18 @@ void command_get(cli_t *cli, char *pt) {
 	}
 
 	// send data
-	write(cli->fd, buffer, sz);
+	rc = write(cli->fd, buffer, sz);
 	YFREE(buffer);
+	if (rc != sz) {
+		printf("%c[1mConnection error%c[0m\n", 27, 27);
+		return;
+	}
 
 	// get response
-	read(cli->fd, &buff, 5);
+	if (read(cli->fd, &buff, 5) != 5) {
+		printf("%c[1mConnection error%c[0m\n", 27, 27);
+		return;
+	}
 	if (RESPONSE_CODE(buff[0]) != RESP_OK) {
 		printf("%c[2mERROR: %s%c[0m\n", 27,
 		       (RESPONSE_CODE(buff[0]) == RESP_PROTO ? "protocol" :
@@ -337,7 +351,11 @@ void command_get(cli_t *cli, char *pt) {
 	memcpy(&length32, &buff[1], sizeof(length32));
 	length = (size_t)ntohl(length32);
 	buffer = YMALLOC(length + 1);
-	read(cli->fd, buffer, length);
+	if ((size_t)read(cli->fd, buffer, length) != length) {
+		printf("%c[1mConnection error%c[0m\n", 27, 27);
+		YFREE(buffer);
+		return;
+	}
 	printf("%c[2m%s%c[0m\n", 27, buffer, 27);
 	YFREE(buffer);
 }
@@ -347,10 +365,8 @@ void command_del(cli_t *cli, char *pt) {
 }
 
 void command_list(cli_t *cli, char *pt) {
-	char *pt2, *key, *data;
 	char *buffer, c;
-	size_t sz, offset, length;
-	uint16_t length16;
+	size_t sz, offset, length, rc;
 
 	LTRIM(pt);
 	// create sending buffer
@@ -379,11 +395,18 @@ void command_list(cli_t *cli, char *pt) {
 	}
 
 	// send data
-	write(cli->fd, buffer, sz);
+	rc = write(cli->fd, buffer, sz);
 	YFREE(buffer);
+	if (rc != sz) {
+		printf("%c[Connection error%c[0m\n", 27, 27);
+		return;
+	}
 
 	// get response
-	read(cli->fd, &c, 1);
+	if (read(cli->fd, &c, 1) != 1) {
+		printf("%c[Connection error%c[0m\n", 27, 27);
+		return;
+	}
 	if (RESPONSE_CODE(c) != RESP_OK) {
 		printf("%c[2mERROR: %s%c[0m\n", 27,
 		       (RESPONSE_CODE(c) == RESP_PROTO ? "protocol" :
@@ -394,15 +417,17 @@ void command_list(cli_t *cli, char *pt) {
 	printf("%c[2mOK%c[0m\n", 27, 27);
 	for (; ; ) {
 		uint16_t ln = 0, lh;
-		char *c;
 
 		if (read(cli->fd, &ln, 2) < 2)
 			break;
 		lh = ntohs(ln);
 		buffer = YMALLOC(lh + 1);
-		read(cli->fd, buffer, lh);
+		if (read(cli->fd, buffer, lh) != lh) {
+			printf("%c[Connection error%c[0m\n", 27, 27);
+			YFREE(buffer);
+			return;
+		}
 		printf("%c[2m%s%c[0m\n", 27, buffer, 27);
 		YFREE(buffer);
 	}
-	YFREE(buffer);
 }

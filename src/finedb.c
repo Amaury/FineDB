@@ -1,13 +1,16 @@
+#include <string.h>
+#include <stdio.h>
 #include "nanomsg/nn.h"
 #include "nanomsg/fanout.h"
 #include "server.h"
 #include "connection_thread.h"
 #include "writer_thread.h"
 #include "database.h"
+#include "self_path.h"
 #include "finedb.h"
 
 /* Initialize a finedb structure. */
-finedb_t *finedb_init(const char *db_path, unsigned short port,
+finedb_t *finedb_init(char *db_path, unsigned short port,
                       unsigned short nbr_threads, size_t mapsize,
                       unsigned int nbr_dbs) {
 	finedb_t *finedb = NULL;
@@ -22,6 +25,12 @@ finedb_t *finedb_init(const char *db_path, unsigned short port,
 	//finedb->writer_tid = 0;
 	finedb->tcp_threads = yv_create(YVECT_SIZE_MEDIUM);
 
+	// path management
+	if (db_path == NULL) {
+		const char *base_path = get_self_path();
+		db_path = YMALLOC(strlen(base_path) + strlen(DEFAULT_DB_PATH) + 2);
+		sprintf(db_path, "%s/%s", base_path, DEFAULT_DB_PATH);
+	}
 	// open database
 	finedb->database = database_open(db_path, mapsize, nbr_dbs);
 	if (finedb->database == NULL) {

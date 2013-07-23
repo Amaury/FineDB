@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 	size_t mapsize = DEFAULT_MAPSIZE;
 	unsigned short nbr_threads = DEFAULT_NBR_THREADS;
 	unsigned short port = DEFAULT_PORT;
-	char *db_path = DEFAULT_DB_PATH;
+	char *db_path = NULL;
 	finedb_t *finedb;
 
 	// signal handlers

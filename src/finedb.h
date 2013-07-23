@@ -53,7 +53,7 @@ typedef struct finedb_s {
  * @param	nbr_dbs		Maximum number of opened databases.
  * @return	A pointer to the allocated structure.
  */
-finedb_t *finedb_init(const char *db_path, unsigned short port,
+finedb_t *finedb_init(char *db_path, unsigned short port,
                       unsigned short nbr_threads, size_t mapsize,
                       unsigned int nbr_dbs);
 
