@@ -14,12 +14,14 @@
  * @field	fd		File descriptor to the socket used to communicate
  *				with the client.
  * @field	write_sock	Nanomsg socket to communicate with the writer thread.
+ * @field	dbname		Name of the selected database. NULL for the default base.
  */
 typedef struct tcp_thread_s {
 	pthread_t tid;
 	finedb_t *finedb;
 	int fd;
 	int write_sock;
+	char *dbname;
 } tcp_thread_t;
 
 /**

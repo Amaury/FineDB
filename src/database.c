@@ -205,3 +205,38 @@ yerr_t database_list(MDB_env *env, const char *name, database_callback cb, void 
 	mdb_dbi_close(env, dbi);
 	return (YENOERR);
 }
+
+/* Remove a database and its keys. */
+yerr_t database_drop(MDB_env *env, const char *name) {
+	MDB_dbi dbi;
+	MDB_txn *txn;
+	int rc;
+
+	// transaction init
+	rc = mdb_txn_begin(env, NULL, 0, &txn);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
+		return (YEACCESS);
+	}
+	// open database in read-write mode
+	rc = mdb_dbi_open(txn, name, 0, &dbi);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
+		return (YEACCESS);
+	}
+	// drop database
+	rc = mdb_drop(txn, dbi, 1);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to drop database (%s).", mdb_strerror(rc));
+		return (YEACCESS);
+	}
+	// transaction commit
+	rc = mdb_txn_commit(txn);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to commit transaction (%s).", mdb_strerror(rc));
+		return (YEACCESS);
+	}
+	// close database
+	mdb_dbi_close(env, dbi);
+	return (YENOERR);
+}

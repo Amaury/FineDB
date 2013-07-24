@@ -11,19 +11,16 @@
 /* **************** REQUEST READING ************* */
 
 /** @define REQUEST_COMMAND Extract the command from other options. */
-#define REQUEST_COMMAND(c)		(c & 3)
+#define REQUEST_COMMAND(c)		(c & 0xe)	// 00001110
 
-/** @define REQUEST_HAS_SYNC Extract the sync option from a request. */
-#define REQUEST_HAS_SYNC(c)		(c & PROTO_OPT_SYNC)
+/** @define REQUEST_HAS_OPT Extract the multi-purpose option from a request. */
+#define REQUEST_HAS_MIXED_OPT(c)	(c & PROTO_OPT_MIXED)
 
-/** @define REQUEST_HAS_DBNAME Extract the dbname option from a request. */
-#define REQUEST_HAS_DBNAME(c)		(c & PROTO_OPT_DBNAME)
+/** @define REQUEST_HAS_SERIALIZED Extract the serialized option from a request. */
+#define REQUEST_HAS_SERIALIZED(c)	(c & PROTO_OPT_SERIALIZED)
 
-/** @define REQUEST_HAS_DATA Extract the data option from a request. */
-#define REQUEST_HAS_DATA(c)		(c & PROTO_OPT_DATA)
-
-/** @define REQUEST_HAS_COMPRESS Extract the compression option from a request. */
-#define REQUEST_HAS_COMPRESS(c)		(c & PROTO_OPT_COMPRESS)
+/** @define REQUEST_HAS_COMPRESSED Extract the compression option from a request. */
+#define REQUEST_HAS_COMPRESSED(c)	(c & PROTO_OPT_COMPRESSED)
 
 /** @define REQUEST_HAS_SERVTOSERV Extract the server-to-server option from a request. */
 #define REQUEST_HAS_SERVTOSERV(c)	(c & PROTO_OPT_SERVTOSERV)
@@ -33,8 +30,8 @@
 /** @define RESPONSE_ADD_DATA Add the data option to a response code. */
 #define RESPONSE_ADD_DATA(c)		(c | PROTO_OPT_DATA)
 
-/** @define RESPONSE_ADD_COMPRESS Add the compression option to a response code. */
-#define	RESPONSE_ADD_COMPRESS		(c | PROTO_OPT_COMPRESS)
+/** @define RESPONSE_ADD_COMPRESSED Add the compression option to a response code. */
+#define	RESPONSE_ADD_COMPRESSED		(c | PROTO_OPT_COMPRESSED)
 
 /* **************** REQUEST WRITING **************** */
 
@@ -47,8 +44,8 @@
 /** @define REQUEST_ADD_DATA Add the data option to a request code. */
 #define REQUEST_ADD_DATA(c)		(c | PROTO_OPT_DATA)
 
-/** @define REQUEST_ADD_COMPRESS Add the compression option to a request code. */
-#define REQUEST_ADD_COMPRESS(c)		(c | PROTO_OPT_COMPRESS)
+/** @define REQUEST_ADD_COMPRESSeD Add the compression option to a request code. */
+#define REQUEST_ADD_COMPRESSED(c)	(c | PROTO_OPT_COMPRESSED)
 
 /** @define REQUEST_ADD_SERVTOSERV Add the server-to-server option to a request code. */
 #define REQUEST_ADD_SERVTOSERV(c)	(c | PROTO_OPT_SERVTOSERV)
@@ -61,30 +58,34 @@
 /**
  * @typedef	protocol_command_t
  *		List of protocol commands.
+ * @constant	PROTO_SETDB	SETDB command.
  * @constant	PROTO_GET	GET command.
+ * @constant	PROTO_DEL	DEL command.
  * @constant	PROTO_PUT	PUT command.
  * @constant	PROTO_LIST	LIST command.
+ * @constant	PROTO_DROP	DROP command.
  */
 typedef enum protocol_command_e {
-	PROTO_GET	= 0,
-	PROTO_PUT	= 1,
-	PROTO_LIST	= 2
+	PROTO_SETDB	= 0,
+	PROTO_GET	= 1,
+	PROTO_DEL	= 2,
+	PROTO_PUT	= 3,
+	PROTO_LIST	= 4,
+	PROTO_DROP	= 5
 } protocol_command_t;
 
 /**
  * @typedef	protocol_option_t
  *		List of command options.
- * @constant	PROTO_OPT_SYNC		Synchronous command.
- * @constant	PROTO_OPT_DBNAME	Database's name.
- * @constant	PROTO_OPT_DATA		Data is embedded in the message.
- * @constant	PROTO_OPT_COMPRESS	Compression activated.
+ * @constant	PROTO_OPT_MIXED		Mixed option.
+ * @constant	PROTO_OPT_SERIALIZED	Serialized data.
+ * @constant	PROTO_OPT_COMPRESSED	Compression activated.
  * @constant	PROTO_OPT_SERVTOSERV	Server-to-server command.
  */
 typedef enum protocol_option_e {
-	PROTO_OPT_SYNC		= 0x08,	// 0b00001000
-	PROTO_OPT_DBNAME	= 0x10, // 0b00010000
-	PROTO_OPT_DATA		= 0x20,	// 0b00100000
-	PROTO_OPT_COMPRESS	= 0x40,	// 0b01000000
+	PROTO_OPT_MIXED		= 0x10,	// 0b00010000
+	PROTO_OPT_SERIALIZED	= 0x20,	// 0b00100000
+	PROTO_OPT_COMPRESSED	= 0x40,	// 0b01000000
 	PROTO_OPT_SERVTOSERV	= 0x80,	// 0b10000000
 } protocol_option_t;
 

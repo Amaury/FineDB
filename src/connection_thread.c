@@ -11,10 +11,12 @@
 #include "connection_thread.h"
 #include "protocol.h"
 #include "database.h"
-#include "command_put.h"
+#include "command_setdb.h"
 #include "command_get.h"
 #include "command_del.h"
+#include "command_put.h"
 #include "command_list.h"
+#include "command_drop.h"
 
 /* Create a new connection thread. */
 tcp_thread_t *connection_thread_new(finedb_t *finedb) {
@@ -70,7 +72,7 @@ void *connection_thread_execution(void *param) {
 		for (; ; ) {
 			ydynabin_t *buff;
 			unsigned char *command;
-			ybool_t sync, compress, dbname;
+			ybool_t has_opt, compress;
 
 			buff = ydynabin_new(NULL, 0, YFALSE);
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
@@ -80,37 +82,47 @@ void *connection_thread_execution(void *param) {
 			}
 			// read command
 			command = ydynabin_forward(buff, sizeof(unsigned char));
-			sync = REQUEST_HAS_SYNC(*command) ? YTRUE : YFALSE;
-			compress = REQUEST_HAS_COMPRESS(*command) ? YTRUE : YFALSE;
-			dbname = REQUEST_HAS_DBNAME(*command) ? YTRUE : YFALSE;
-			YLOG_ADD(YLOG_DEBUG, "---Req: '%x' - sync: %d - comp: %d - dbname: %d\n",
-			         REQUEST_COMMAND(*command), (sync ? 1 : 0),
-			         (compress ? 1 : 0), (dbname ? 1 : 0));
+			has_opt = REQUEST_HAS_MIXED_OPT(*command) ? YTRUE : YFALSE;
+			compress = REQUEST_HAS_COMPRESSED(*command) ? YTRUE : YFALSE;
+			YLOG_ADD(YLOG_DEBUG, "---Req: '%x' - opt: %d - comp: %d\n",
+			         REQUEST_COMMAND(*command), (has_opt ? 1 : 0),
+			         (compress ? 1 : 0));
 			switch (REQUEST_COMMAND(*command)) {
-			case PROTO_LIST:
-				// LIST command
-				YLOG_ADD(YLOG_DEBUG, "LIST command");
-				if (command_list(thread, dbname, buff) != YENOERR)
+			case PROTO_SETDB:
+				// SETDB command
+				YLOG_ADD(YLOG_DEBUG, "SETDB command");
+				if (command_setdb(thread, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_GET:
 				// GET command
 				YLOG_ADD(YLOG_DEBUG, "GET command");
-				if (command_get(thread, dbname, compress, buff) != YENOERR)
+				if (command_get(thread, compress, buff) != YENOERR)
+					goto end_of_connection;
+				break;
+			case PROTO_DEL:
+				// DEL command
+				YLOG_ADD(YLOG_DEBUG, "DEL command");
+				if (command_del(thread, has_opt, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_PUT:
-				if (REQUEST_HAS_DATA(*command)) {
-					// PUT command
-					YLOG_ADD(YLOG_DEBUG, "PUT command");
-					if (command_put(thread, dbname, sync, compress, buff) != YENOERR)
-						goto end_of_connection;
-				} else {
-					// DEL command
-					YLOG_ADD(YLOG_DEBUG, "DEL command");
-					if (command_del(thread, dbname, sync, buff) != YENOERR)
-						goto end_of_connection;
-				}
+				// PUT command
+				YLOG_ADD(YLOG_DEBUG, "PUT command");
+				if (command_put(thread, has_opt, compress, buff) != YENOERR)
+					goto end_of_connection;
+				break;
+			case PROTO_LIST:
+				// LIST command
+				YLOG_ADD(YLOG_DEBUG, "LIST command");
+				if (command_list(thread, buff) != YENOERR)
+					goto end_of_connection;
+				break;
+			case PROTO_DROP:
+				// DROP command
+				YLOG_ADD(YLOG_DEBUG, "DROP command");
+				if (command_drop(thread, has_opt, buff) != YENOERR)
+					goto end_of_connection;
 				break;
 			default:
 				// bad command
@@ -123,6 +135,7 @@ void *connection_thread_execution(void *param) {
 end_of_connection:
 		YLOG_ADD(YLOG_DEBUG, "End of connection.");
 		close(thread->fd);
+		YFREE(thread->dbname);
 	}
 	pthread_exit(NULL);
 }
@@ -165,7 +178,7 @@ yerr_t connection_send_response(int fd, unsigned char code, ybool_t compress,
 	mh.msg_controllen = 0;
 	mh.msg_flags = 0;
 	if (data != NULL) {
-		code = RESPONSE_ADD_DATA(code);
+		//code = RESPONSE_ADD_DATA(code);
 		data_nlen = htonl((uint32_t)data_len);
 		iov[1].iov_base = (caddr_t)&data_nlen;
 		iov[1].iov_len = sizeof(uint32_t);

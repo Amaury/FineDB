@@ -64,4 +64,12 @@ yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data);
  */
 yerr_t database_list(MDB_env *env, const char *name, database_callback cb, void *cb_data);
 
+/**
+ * Remove a database and its keys.
+ * @param	env	Database environment.
+ * @param	name	Database name.
+ * @return 	YENOERR if OK.
+ */
+yerr_t database_drop(MDB_env *env, const char *name);
+
 #endif /* __DATABASE_H__ */

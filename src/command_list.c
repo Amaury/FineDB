@@ -13,43 +13,25 @@
 static yerr_t _command_list_loop(void *ptr, ybin_t key, ybin_t data);
 
 /* Process a LIST command. */
-yerr_t command_list(tcp_thread_t *thread, ybool_t has_dbname, ydynabin_t *buff) {
-	char *pdbname_len, dbname_len, *dbname = NULL, last_byte = 0;
-	void *ptr;
+yerr_t command_list(tcp_thread_t *thread, ydynabin_t *buff) {
+	char last_byte = 0;
 	yerr_t result;
 
 	YLOG_ADD(YLOG_DEBUG, "LIST command");
-	// read dbname if defined
-	if (has_dbname) {
-		// read dbname length
-		if (connection_read_data(thread->fd, buff, sizeof(dbname_len)) != YENOERR)
-			goto error;
-		pdbname_len = ydynabin_forward(buff, sizeof(dbname_len));
-		dbname_len = *pdbname_len;
-		// read dbname
-		if (connection_read_data(thread->fd, buff, (size_t)dbname_len) != YENOERR)
-			goto error;
-		ptr = ydynabin_forward(buff, (size_t)dbname_len);
-		if ((dbname = YMALLOC((size_t)dbname_len + 1)) == NULL)
-			goto error;
-		memcpy(dbname, ptr, (size_t)dbname_len);
-	}
 	// send the response to the client
 	result = connection_send_response(thread->fd, RESP_OK, YFALSE, NULL, 0);
 	if (result != YENOERR)
 		goto error;
 	// send data
-	if (database_list(thread->finedb->database, dbname, _command_list_loop, thread) != YENOERR)
+	if (database_list(thread->finedb->database, thread->dbname, _command_list_loop, thread) != YENOERR)
 		goto error;
 	// send last byte
 	if (write(thread->fd, &last_byte, 1) != 1)
 		goto error;
 	YLOG_ADD(YLOG_DEBUG, "LIST command OK");
-	YFREE(dbname);
 	return (result);
 error:
 	YLOG_ADD(YLOG_WARN, "LIST error");
-	YFREE(dbname);
 	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
 	return (YEIO);
 }

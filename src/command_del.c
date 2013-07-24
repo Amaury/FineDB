@@ -4,41 +4,29 @@
 #include "ylog.h"
 #include "command_del.h"
 #include "protocol.h"
+#include "database.h"
 #include "writer_thread.h"
 
 /* Process a DEL command. */
-yerr_t command_del(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ydynabin_t *buff) {
-	uint16_t *pname_len, name_len;
-	uint32_t *pdata_len, data_len;
-	void *ptr, *name = NULL, *data = NULL;
+yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
+	uint16_t *pkey_len, key_len;
+	void *ptr, *key = NULL;
 	writer_msg_t *msg = NULL;
 	char answer;
 
-	YLOG_ADD(YLOG_DEBUG, "PUT command");
-	// read name length
-	if (connection_read_data(thread->fd, buff, sizeof(name_len)) != YENOERR)
+	YLOG_ADD(YLOG_DEBUG, "DEL command");
+	// read key length
+	if (connection_read_data(thread->fd, buff, sizeof(key_len)) != YENOERR)
 		goto error;
-	pname_len = ydynabin_forward(buff, sizeof(name_len));
-	name_len = ntohs(*pname_len);
-	// read name
-	if (connection_read_data(thread->fd, buff, (size_t)name_len) != YENOERR)
+	pkey_len = ydynabin_forward(buff, sizeof(key_len));
+	key_len = ntohs(*pkey_len);
+	// read key
+	if (connection_read_data(thread->fd, buff, (size_t)key_len) != YENOERR)
 		goto error;
-	ptr = ydynabin_forward(buff, (size_t)name_len);
-	if ((name = YMALLOC((size_t)name_len)) == NULL)
+	ptr = ydynabin_forward(buff, (size_t)key_len);
+	if ((key = YMALLOC((size_t)key_len)) == NULL)
 		goto error;
-	memcpy(name, ptr, (size_t)name_len);
-	// read data length
-	if (connection_read_data(thread->fd, buff, sizeof(data_len)) != YENOERR)
-		goto error;
-	pdata_len = ydynabin_forward(buff, sizeof(data_len));
-	data_len = ntohl(*pdata_len);
-	// read data
-	if (connection_read_data(thread->fd, buff, (size_t)data_len) != YENOERR)
-		goto error;
-	ptr = ydynabin_forward(buff, (size_t)data_len);
-	if ((data = YMALLOC((size_t)data_len)) == NULL)
-		goto error;
-	memcpy(data, ptr, (size_t)data_len);
+	memcpy(key, ptr, (size_t)key_len);
 
 	if (!sync) {
 		// send the response
@@ -48,30 +36,35 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ydynabin_
 	// creation of the message
 	if ((msg = YMALLOC(sizeof(writer_msg_t))) == NULL)
 		goto error;
-	ybin_set(&msg->name, name, name_len);
-	ybin_set(&msg->data, data, data_len);
-	// send the message to the writer thread
-	if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
-		YLOG_ADD(YLOG_WARN, "Unable to send message to writer thread.");
-		goto error;
+	msg->type = WRITE_DEL;
+	ybin_set(&msg->name, key, key_len);
+	if (!sync) {
+		msg->dbname = thread->dbname ? strdup(thread->dbname) : NULL;
+		// send the message to the writer thread
+		if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
+			YLOG_ADD(YLOG_WARN, "Unable to send message to writer thread.");
+			goto error;
+		}
+		return (YENOERR);
 	}
-	// wait for the answer
-	if (nn_recv(thread->write_sock, &answer, sizeof(answer), 0) < 0) {
-		YLOG_ADD(YLOG_WARN, "Unable to get answer from writer thread.");
-		goto error;
+	// synchronized
+	if (database_del(thread->finedb->database, thread->dbname, msg->name) == YENOERR) {
+		YLOG_ADD(YLOG_DEBUG, "Deletion done on database.");
+		answer = 1;
+	} else {
+		YLOG_ADD(YLOG_WARN, "Unable to delete data on database.");
+		answer = 0;
 	}
-	YFREE(name);
-	YFREE(data);
+	YFREE(key);
 	YFREE(msg);
-	YLOG_ADD(YLOG_DEBUG, "PUT command %s", (answer ? "OK" : "failed"));
+	YLOG_ADD(YLOG_DEBUG, "DEL command %s", (answer ? "OK" : "failed"));
 	if (!sync)
 		return (YENOERR);
 	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_NO_DATA),
 	                                 YFALSE, NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "PUT error");
-	YFREE(name);
-	YFREE(data);
+	YFREE(key);
 	YFREE(msg);
 	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
 	return (YEIO);

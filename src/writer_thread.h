@@ -8,10 +8,12 @@
  *		Type of writer's action.
  * @const	WRITE_PUT	Add or update a key in database.
  * @const	WRITE_DEL	Remove a key from database.
+ * @const	WRITE_DROP	Remove a database and its keys.
  */
 typedef enum writer_action_e {
 	WRITE_PUT = 0,
-	WRITE_DEL
+	WRITE_DEL,
+	WRITE_DROP
 } writer_action_t;
 
 /**

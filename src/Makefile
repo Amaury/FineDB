@@ -12,10 +12,12 @@ SRC	=	main.c			\
 		server.c		\
 		writer_thread.c		\
 		connection_thread.c	\
+		command_setdb.c		\
 		command_get.c		\
-		command_put.c		\
 		command_del.c		\
-		command_list.c
+		command_put.c		\
+		command_list.c		\
+		command_drop.c
 
 # ###################################################################
 

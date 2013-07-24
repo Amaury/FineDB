@@ -10,11 +10,10 @@
  * @function	command_del
  *		Process a DEL command.
  * @param	thread	Pointer to the thread's structure.
- * @param	dbname	YTRUE if the request contains a database name.
  * @param	sync	YTRUE if the answer must be synchronized.
  * @param	buff	Pointer to the dynamic buffer.
  * @return	YENOERR if OK.
  */
-yerr_t command_del(tcp_thread_t *thread, ybool_t dbname, ybool_t sync, ydynabin_t *buff);
+yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff);
 
 #endif /* __COMMAND_DEL_H__ */
