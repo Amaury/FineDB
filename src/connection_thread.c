@@ -9,7 +9,6 @@
 #include "ylog.h"
 #include "yerror.h"
 #include "connection_thread.h"
-#include "protocol.h"
 #include "database.h"
 #include "command_setdb.h"
 #include "command_get.h"
@@ -127,8 +126,7 @@ void *connection_thread_execution(void *param) {
 			default:
 				// bad command
 				YLOG_ADD(YLOG_DEBUG, "Bad command '%x'", REQUEST_COMMAND(*command));
-				connection_send_response(thread->fd, RESP_PROTO,
-				                         YFALSE, NULL, 0);
+				CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_PROTOCOL);
 				goto end_of_connection;
 			}
 		}
@@ -163,8 +161,9 @@ yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size) {
 }
 
 /* Send a response. */
-yerr_t connection_send_response(int fd, unsigned char code, ybool_t compress,
-                                const void *data, size_t data_len) {
+yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serialized,
+                                ybool_t compressed, const void *data, size_t data_len) {
+	unsigned char code_byte;
 	struct iovec iov[3];
 	struct msghdr mh;
 	ssize_t expected = 1, rc;
@@ -177,8 +176,16 @@ yerr_t connection_send_response(int fd, unsigned char code, ybool_t compress,
 	mh.msg_control = NULL;
 	mh.msg_controllen = 0;
 	mh.msg_flags = 0;
+	// code
+	code_byte = (unsigned char)code;
+	if (serialized)
+		code_byte = RESPONSE_ADD_SERIALIZED(code_byte);
+	if (compressed)
+		code_byte = RESPONSE_ADD_COMPRESSED(code_byte);
+	iov[0].iov_base = (caddr_t)&code;
+	iov[0].iov_len = sizeof(code);
+	// data
 	if (data != NULL) {
-		//code = RESPONSE_ADD_DATA(code);
 		data_nlen = htonl((uint32_t)data_len);
 		iov[1].iov_base = (caddr_t)&data_nlen;
 		iov[1].iov_len = sizeof(uint32_t);
@@ -187,8 +194,6 @@ yerr_t connection_send_response(int fd, unsigned char code, ybool_t compress,
 		mh.msg_iovlen = 3;
 		expected += sizeof(unsigned int) + data_len;
 	}
-	iov[0].iov_base = (caddr_t)&code;
-	iov[0].iov_len = sizeof(code);
 	rc = sendmsg(fd, &mh, 0);
 	if (rc < 0) {
 		YLOG_ADD(YLOG_WARN, "Unable to send response.");

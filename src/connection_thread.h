@@ -5,6 +5,7 @@
 #include "yerror.h"
 #include "ydynabin.h"
 #include "finedb.h"
+#include "protocol.h"
 
 /**
  * @typedef	tcp_thread_t
@@ -38,6 +39,9 @@ typedef enum tcp_state_e {
 	STATE_NAMESIZE,
 	STATE_FILENAME
 } tcp_state_t;
+
+/** @define CONNECTION_SEND_ERROR Send an error response to the client. */
+#define CONNECTION_SEND_ERROR(fd, err)	connection_send_response(fd, err, YFALSE, YFALSE, NULL, 0)
 
 /**
  * @function	connection_thread_new
@@ -80,12 +84,13 @@ yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size);
  *		Send a response to the client.
  * @param	fd		Socket descriptor.
  * @param	code		Response code.
- * @param	compress	YTRUE if the data could be compressed.
+ * @param	serialized	YTRUE if the data is serialized.
+ * @param	compressed	YTRUE if the data is compressed.
  * @param	data		Pointer to the data to send, or NULL if there is no data.
  * @param	data_len	Date size. Unused if data is NULL.
  * @return	YENOERR if OK.
  */
-yerr_t connection_send_response(int fd, unsigned char code, ybool_t compress,
-                                const void *data, size_t data_len);
+yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serialized,
+                                ybool_t compressed, const void *data, size_t data_len);
 
 #endif /* __CONNECTION_THREAD_H__ */

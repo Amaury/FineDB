@@ -14,6 +14,7 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 	void *ptr, *name = NULL;
 	ybin_t bin_key, bin_data;
 	yerr_t result;
+	ybool_t serialized = YFALSE;
 
 	YLOG_ADD(YLOG_DEBUG, "GET command");
 	// read name length
@@ -44,7 +45,7 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 		unzip_data = YMALLOC(unzip_len);
 		if (snappy_uncompress(bin_data.data, bin_data.len, unzip_data)) {
 			YLOG_ADD(YLOG_WARN, "Unable to uncompress data.");
-			connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
+			goto error;
 		}
 		bin_data.data = unzip_data;
 		bin_data.len = unzip_len;
@@ -52,11 +53,12 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 	// send the response to the client
 	YLOG_ADD(YLOG_DEBUG, "GET command OK");
 	YFREE(name);
-	result = connection_send_response(thread->fd, RESP_OK, compress, bin_data.data, bin_data.len);
+	result = connection_send_response(thread->fd, RESP_OK, serialized, compress,
+	                                  bin_data.data, bin_data.len);
 	return (result);
 error:
 	YLOG_ADD(YLOG_WARN, "GET error");
 	YFREE(name);
-	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
+	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
 	return (YEIO);
 }
