@@ -30,7 +30,7 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 
 	if (!sync) {
 		// send the response
-		connection_send_response(thread->fd, RESP_OK, YFALSE, NULL, 0);
+		connection_send_response(thread->fd, RESP_OK, YFALSE, YFALSE, NULL, 0);
 	}
 
 	// creation of the message
@@ -61,11 +61,11 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 	if (!sync)
 		return (YENOERR);
 	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_NO_DATA),
-	                                 YFALSE, NULL, 0));
+	                                 YFALSE, YFALSE, NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "PUT error");
 	YFREE(key);
 	YFREE(msg);
-	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
+	CONNECTION_SEND_ERROR(thread->fd, RES_ERR_SERVER);
 	return (YEIO);
 }

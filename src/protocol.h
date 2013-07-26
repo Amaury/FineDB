@@ -27,11 +27,11 @@
 
 /* **************** RESPONSE WRITING *************** */
 
-/** @define RESPONSE_ADD_DATA Add the data option to a response code. */
-#define RESPONSE_ADD_DATA(c)		(c | PROTO_OPT_DATA)
+/** @define RESPONSE_ADD_SERIALIZED Add the serialized option to a response code. */
+#define RESPONSE_ADD_SERIALIZED(c)	(c | PROTO_OPT_SERIALIZED)
 
 /** @define RESPONSE_ADD_COMPRESSED Add the compression option to a response code. */
-#define	RESPONSE_ADD_COMPRESSED		(c | PROTO_OPT_COMPRESSED)
+#define	RESPONSE_ADD_COMPRESSED(c)		(c | PROTO_OPT_COMPRESSED)
 
 /* **************** REQUEST WRITING **************** */
 
@@ -62,6 +62,8 @@
  * @constant	PROTO_GET	GET command.
  * @constant	PROTO_DEL	DEL command.
  * @constant	PROTO_PUT	PUT command.
+ * @constant	PROTO_ADD	ADD command.
+ * @constant	PROTO_UPDATE	UPDATE command.
  * @constant	PROTO_LIST	LIST command.
  * @constant	PROTO_DROP	DROP command.
  */
@@ -92,18 +94,23 @@ typedef enum protocol_option_e {
 /**
  * @typedef	protocol_response_t
  *		List of response codes.
- * @constant	RESP_OK		OK.
- * @constant	RESP_PROTO	Protocol error.
- * @constant	RESP_SERVER_ERR	Server error.
- * @constant	RESP_NO_DATA	Unknown key.
- * @constant	RESP_UNDEFINED	Undefined error.
+ * @constant	RESP_ERR_UNDEFINED	Undefined error.
+ * @constant	RESP_OK			OK.
+ * @constant	RESP_ERR_PROTOCOL	Protocol error.
+ * @constant	RESP_ERR_SERVER		Server error.
+ * @constant	RESP_ERR_FULL_DB	Database is full.
+ * @constant	RESP_ERR_TOO_MANY_DB	Too many opened databases.
+ * @constant	RESP_ERR_BAD_NAME	Bad name (dbname for SETDB request,
+ *					key for GET or DEL request).
  */
 typedef enum protocol_response_e {
-	RESP_OK		= 0,
-	RESP_PROTO	= 1,
-	RESP_SERVER_ERR	= 2,
-	RESP_NO_DATA	= 3,
-	RESP_UNDEFINED	= 4
+	RESP_ERR_UNDEFINED	= 0,
+	RESP_OK			= 1,
+	RESP_ERR_PROTOCOL	= 2,
+	RESP_ERR_SERVER		= 3,
+	RESP_ERR_FULL_DB	= 4,
+	RESP_ERR_TOO_MANY_DB	= 5,
+	RESP_ERR_BAD_NAME	= 6
 } protocol_response_t;
 
 #endif /* __PROTOCOL_H__ */
