@@ -34,10 +34,10 @@ yerr_t command_setdb(tcp_thread_t *thread, ydynabin_t *buff) {
 	}
 	// send the response to the client
 	YLOG_ADD(YLOG_DEBUG, "SETDB command OK");
-	result = connection_send_response(thread->fd, RESP_OK, YFALSE, NULL, 0);
+	CONNECTION_SEND_OK(thread->fd);
 	return (result);
 error:
 	YLOG_ADD(YLOG_WARN, "SETDB error");
-	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
+	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
 	return (YEIO);
 }

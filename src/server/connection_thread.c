@@ -16,6 +16,7 @@
 #include "command_put.h"
 #include "command_list.h"
 #include "command_drop.h"
+#include "command_start_commit_rollback.h"
 
 /* Create a new connection thread. */
 tcp_thread_t *connection_thread_new(finedb_t *finedb) {
@@ -71,7 +72,7 @@ void *connection_thread_execution(void *param) {
 		for (; ; ) {
 			ydynabin_t *buff;
 			unsigned char *command;
-			ybool_t has_opt, compress;
+			ybool_t sync, compress, serialized;
 
 			buff = ydynabin_new(NULL, 0, YFALSE);
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
@@ -81,10 +82,11 @@ void *connection_thread_execution(void *param) {
 			}
 			// read command
 			command = ydynabin_forward(buff, sizeof(unsigned char));
-			has_opt = REQUEST_HAS_MIXED_OPT(*command) ? YTRUE : YFALSE;
+			sync = REQUEST_HAS_SYNC(*command) ? YTRUE : YFALSE;
 			compress = REQUEST_HAS_COMPRESSED(*command) ? YTRUE : YFALSE;
-			YLOG_ADD(YLOG_DEBUG, "---Req: '%x' - opt: %d - comp: %d\n",
-			         REQUEST_COMMAND(*command), (has_opt ? 1 : 0),
+			serialized = REQUEST_HAS_SERIALIZED(*command) ? YTRUE : YFALSE;
+			YLOG_ADD(YLOG_DEBUG, "---Req: '%x' - sync: %d - comp: %d\n",
+			         REQUEST_COMMAND(*command), (sync ? 1 : 0),
 			         (compress ? 1 : 0));
 			switch (REQUEST_COMMAND(*command)) {
 			case PROTO_SETDB:
@@ -102,13 +104,47 @@ void *connection_thread_execution(void *param) {
 			case PROTO_DEL:
 				// DEL command
 				YLOG_ADD(YLOG_DEBUG, "DEL command");
-				if (command_del(thread, has_opt, buff) != YENOERR)
+				if (command_del(thread, sync, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_PUT:
 				// PUT command
 				YLOG_ADD(YLOG_DEBUG, "PUT command");
-				if (command_put(thread, has_opt, compress, buff) != YENOERR)
+				if (command_put(thread, sync, compress, buff) != YENOERR)
+					goto end_of_connection;
+				break;
+			case PROTO_ADD:
+				// ADD command
+				YLOG_ADD(YLOG_DEBUG, "ADD command");
+				break;
+			case PROTO_UPDATE:
+				// UPDATE command
+				YLOG_ADD(YLOG_DEBUG, "UPDATE command");
+				break;
+			case PROTO_INC:
+				// INC command
+				YLOG_ADD(YLOG_DEBUG, "INC command");
+				break;
+			case PROTO_DEC:
+				// DEC command
+				YLOG_ADD(YLOG_DEBUG, "DEC command");
+				break;
+			case PROTO_START:
+				// START command
+				YLOG_ADD(YLOG_DEBUG, "START command");
+				if (command_start(thread) != YENOERR)
+					goto end_of_connection;
+				break;
+			case PROTO_COMMIT:
+				// COMMIT command
+				YLOG_ADD(YLOG_DEBUG, "COMMIT command");
+				if (command_commit(thread) != YENOERR)
+					goto end_of_connection;
+				break;
+			case PROTO_ROLLBACK:
+				// ROLLBACK command
+				YLOG_ADD(YLOG_DEBUG, "ROLLBACK command");
+				if (command_rollback(thread) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_LIST:
@@ -120,7 +156,7 @@ void *connection_thread_execution(void *param) {
 			case PROTO_DROP:
 				// DROP command
 				YLOG_ADD(YLOG_DEBUG, "DROP command");
-				if (command_drop(thread, has_opt, buff) != YENOERR)
+				if (command_drop(thread, sync, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			default:
@@ -132,6 +168,10 @@ void *connection_thread_execution(void *param) {
 		}
 end_of_connection:
 		YLOG_ADD(YLOG_DEBUG, "End of connection.");
+		if (thread->transaction) {
+			database_transaction_rollback(thread->transaction);
+			thread->transaction = NULL;
+		}
 		close(thread->fd);
 		YFREE(thread->dbname);
 	}

@@ -4,7 +4,7 @@ SRC	= finedb-cli.c
 # ###################################################################
 
 # Paths to header files
-IPATH   = -I. -I../../include -I../../src
+IPATH   = -I. -I../../include -I../server
 # Path to libraries and lib's names
 LDPATH  = -L. -L../../lib -ly -Wl,-rpath -Wl,'$$ORIGIN/../lib'
 # Compiler options
@@ -24,17 +24,17 @@ LDFLAGS = $(EXEOPT) $(LDPATH)
 
 # ###################################################################
 
-.PHONY: all clean finedb-cli
+.PHONY: all clean
 
 all: clean $(NAME)
 
 clean:
-	rm -f $(NAME) ../$(NAME) $(OBJS)
+	rm -f $(NAME) ../$(NAME) $(OBJS) ../../bin/$(NAME)
 
-finedb-cli: $(OBJS)
+$(NAME): $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $(NAME)
 	strip $(NAME)
-	cp $(NAME) ../
+	mv $(NAME) ../../bin/
 
 .c.o:
 	$(CC) $(CFLAGS) -c $<

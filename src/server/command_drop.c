@@ -19,7 +19,7 @@ yerr_t command_drop(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 		goto error;
 	// not synchronized: immediate response
 	if (!sync)
-		connection_send_response(thread->fd, RESP_OK, YFALSE, NULL, 0);
+		CONNECTION_SEND_OK(thread->fd);
 
 	// creation of the message
 	if ((msg = YMALLOC(sizeof(writer_msg_t))) == NULL)
@@ -35,7 +35,7 @@ yerr_t command_drop(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 		return (YENOERR);
 	}
 	// synchronized
-	if (database_drop(thread->finedb->database, thread->dbname) == YENOERR) {
+	if (database_drop(thread->finedb->database, thread->transaction, thread->dbname) == YENOERR) {
 		YLOG_ADD(YLOG_DEBUG, "Database dropped.");
 		answer = 1;
 	} else {
@@ -43,11 +43,11 @@ yerr_t command_drop(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 		answer = 0;
 	}
 	YLOG_ADD(YLOG_DEBUG, "DROP command %s", (answer ? "OK" : "failed"));
-	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_NO_DATA),
-	                                 YFALSE, NULL, 0));
+	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
+	                                 YFALSE, YFALSE, NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "DROP error");
 	YFREE(msg);
-	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
+	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
 	return (YEIO);
 }

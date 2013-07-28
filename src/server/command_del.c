@@ -48,7 +48,7 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 		return (YENOERR);
 	}
 	// synchronized
-	if (database_del(thread->finedb->database, thread->dbname, msg->name) == YENOERR) {
+	if (database_del(thread->finedb->database, thread->transaction, thread->dbname, msg->name) == YENOERR) {
 		YLOG_ADD(YLOG_DEBUG, "Deletion done on database.");
 		answer = 1;
 	} else {
@@ -60,12 +60,12 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 	YLOG_ADD(YLOG_DEBUG, "DEL command %s", (answer ? "OK" : "failed"));
 	if (!sync)
 		return (YENOERR);
-	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_NO_DATA),
+	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
 	                                 YFALSE, YFALSE, NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "PUT error");
 	YFREE(key);
 	YFREE(msg);
-	CONNECTION_SEND_ERROR(thread->fd, RES_ERR_SERVER);
+	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
 	return (YEIO);
 }

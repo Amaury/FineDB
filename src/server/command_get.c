@@ -33,7 +33,7 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 	bin_key.len = (size_t)name_len;
 	bin_key.data = name;
 	// get data
-	if (database_get(thread->finedb->database, thread->dbname, bin_key, &bin_data) != YENOERR)
+	if (database_get(thread->finedb->database, thread->transaction, thread->dbname, bin_key, &bin_data) != YENOERR)
 		goto error;
 	if (bin_data.len && !compress) {
 		// uncompress data before sending them

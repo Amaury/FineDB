@@ -44,19 +44,49 @@ void database_close(MDB_env *env) {
 	YLOG_ADD(YLOG_DEBUG, "Datbase closed.");
 }
 
-/* Add or update a key in database. */
-yerr_t database_put(MDB_env *env, const char *name, ybin_t key, ybin_t data) {
-	MDB_dbi dbi;
+/* Open a transaction. */
+MDB_txn *database_transaction_start(MDB_env *env, ybool_t readonly) {
 	MDB_txn *txn;
+	unsigned int flags = 0;
+	int rc;
+
+	if (readonly)
+		flags = MDB_RDONLY;
+	rc = mdb_txn_begin(env, NULL, flags, &txn);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
+		return (NULL);
+	}
+	return (txn);
+}
+
+/* Commit a transaction. */
+yerr_t database_transaction_commit(MDB_txn *transaction) {
+	int rc;
+
+	rc = mdb_txn_commit(transaction);
+	if (rc) {
+		YLOG_ADD(YLOG_WARN, "Unable to commit transaction (%s).", mdb_strerror(rc));
+		return (YEACCESS);
+	}
+	return (YENOERR);
+}
+
+/* Rollback a transaction. */
+void database_transaction_rollback(MDB_txn *transaction) {
+	mdb_txn_abort(transaction);
+}
+
+/* Add or update a key in database. */
+yerr_t database_put(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t key, ybin_t data) {
+	MDB_dbi dbi;
+	MDB_txn *txn = transaction;
 	MDB_val db_key, db_data;
 	int rc;
 
 	// transaction init
-	rc = mdb_txn_begin(env, NULL, 0, &txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
+	if (txn == NULL && (txn = database_transaction_start(env, YFALSE)) == NULL)
 		return (YEACCESS);
-	}
 	// open database in read-write mode
 	rc = mdb_dbi_open(txn, name, MDB_CREATE, &dbi);
 	if (rc) {
@@ -75,29 +105,23 @@ yerr_t database_put(MDB_env *env, const char *name, ybin_t key, ybin_t data) {
 		return (YEACCESS);
 	}
 	// transaction commit
-	rc = mdb_txn_commit(txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to commit transaction (%s).", mdb_strerror(rc));
+	if (transaction == NULL && database_transaction_commit(txn) != YENOERR)
 		return (YEACCESS);
-	}
 	// close database
 	mdb_dbi_close(env, dbi);
 	return (YENOERR);
 }
 
 /* Remove a key from database. */
-yerr_t database_del(MDB_env *env, const char *name, ybin_t key) {
+yerr_t database_del(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t key) {
 	MDB_dbi dbi;
-	MDB_txn *txn;
+	MDB_txn *txn = transaction;
 	MDB_val db_key;
 	int rc;
 
 	// transaction init
-	rc = mdb_txn_begin(env, NULL, 0, &txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
+	if (txn == NULL && (txn = database_transaction_start(env, YFALSE)) == NULL)
 		return (YEACCESS);
-	}
 	// open database in read-write mode
 	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
@@ -114,29 +138,23 @@ yerr_t database_del(MDB_env *env, const char *name, ybin_t key) {
 		return (YEACCESS);
 	}
 	// transaction commit
-	rc = mdb_txn_commit(txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to commit transaction (%s).", mdb_strerror(rc));
+	if (transaction == NULL && database_transaction_commit(txn) != YENOERR)
 		return (YEACCESS);
-	}
 	// close database
 	mdb_dbi_close(env, dbi);
 	return (YENOERR);
 }
 
 /* Get a key from database. */
-yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data) {
+yerr_t database_get(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t key, ybin_t *data) {
 	MDB_dbi dbi;
-	MDB_txn *txn;
+	MDB_txn *txn = transaction;
 	MDB_val db_key, db_data;
 	int rc;
 
 	// transaction init
-	rc = mdb_txn_begin(env, NULL, MDB_RDONLY, &txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
+	if (txn == NULL && (txn = database_transaction_start(env, YTRUE)) == NULL)
 		return (YEACCESS);
-	}
 	// open database in read-write mode
 	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
@@ -153,7 +171,8 @@ yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data) {
 		return (YEACCESS);
 	}
 	// end of transaction
-	mdb_txn_abort(txn);
+	if (transaction == NULL)
+		database_transaction_rollback(txn);
 	// close database
 	mdb_dbi_close(env, dbi);
 	// return
@@ -163,19 +182,16 @@ yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data) {
 }
 
 /* Open a cursor on a database, and send every key/value pair to a callback. */
-yerr_t database_list(MDB_env *env, const char *name, database_callback cb, void *cb_data) {
+yerr_t database_list(MDB_env *env, MDB_txn *transaction, const char *name, database_callback cb, void *cb_data) {
 	MDB_dbi dbi;
-	MDB_txn *txn;
+	MDB_txn *txn = transaction;
 	MDB_cursor *cursor;
 	MDB_val db_key, db_data;
 	int rc;
 
 	// transaction init
-	rc = mdb_txn_begin(env, NULL, MDB_RDONLY, &txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
+	if (txn == NULL && (txn = database_transaction_start(env, YTRUE)) == NULL)
 		return (YEACCESS);
-	}
 	// open database in read-write mode
 	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
@@ -200,24 +216,22 @@ yerr_t database_list(MDB_env *env, const char *name, database_callback cb, void 
 	// close cursor
 	mdb_cursor_close(cursor);
 	// end of transaction
-	mdb_txn_abort(txn);
+	if (transaction == NULL)
+		database_transaction_rollback(txn);
 	// close database
 	mdb_dbi_close(env, dbi);
 	return (YENOERR);
 }
 
 /* Remove a database and its keys. */
-yerr_t database_drop(MDB_env *env, const char *name) {
+yerr_t database_drop(MDB_env *env, MDB_txn *transaction, const char *name) {
 	MDB_dbi dbi;
-	MDB_txn *txn;
+	MDB_txn *txn = transaction;
 	int rc;
 
 	// transaction init
-	rc = mdb_txn_begin(env, NULL, 0, &txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to create transaction (%s).", mdb_strerror(rc));
+	if (txn == NULL && (txn = database_transaction_start(env, YFALSE)) == NULL)
 		return (YEACCESS);
-	}
 	// open database in read-write mode
 	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
@@ -231,11 +245,8 @@ yerr_t database_drop(MDB_env *env, const char *name) {
 		return (YEACCESS);
 	}
 	// transaction commit
-	rc = mdb_txn_commit(txn);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to commit transaction (%s).", mdb_strerror(rc));
+	if (transaction == NULL && database_transaction_commit(txn) != YENOERR)
 		return (YEACCESS);
-	}
 	// close database
 	mdb_dbi_close(env, dbi);
 	return (YENOERR);

@@ -11,10 +11,10 @@
 /* **************** REQUEST READING ************* */
 
 /** @define REQUEST_COMMAND Extract the command from other options. */
-#define REQUEST_COMMAND(c)		(c & 0xe)	// 00001110
+#define REQUEST_COMMAND(c)		(c & 0xf)	// 00001111
 
-/** @define REQUEST_HAS_OPT Extract the multi-purpose option from a request. */
-#define REQUEST_HAS_MIXED_OPT(c)	(c & PROTO_OPT_MIXED)
+/** @define REQUEST_HAS_SYNC Extract the multi-purpose option from a request. */
+#define REQUEST_HAS_SYNC(c)		(c & PROTO_OPT_SYNC)
 
 /** @define REQUEST_HAS_SERIALIZED Extract the serialized option from a request. */
 #define REQUEST_HAS_SERIALIZED(c)	(c & PROTO_OPT_SERIALIZED)
@@ -31,7 +31,7 @@
 #define RESPONSE_ADD_SERIALIZED(c)	(c | PROTO_OPT_SERIALIZED)
 
 /** @define RESPONSE_ADD_COMPRESSED Add the compression option to a response code. */
-#define	RESPONSE_ADD_COMPRESSED(c)		(c | PROTO_OPT_COMPRESSED)
+#define	RESPONSE_ADD_COMPRESSED(c)	(c | PROTO_OPT_COMPRESSED)
 
 /* **************** REQUEST WRITING **************** */
 
@@ -52,8 +52,11 @@
 
 /* **************** RESPONSE READING *************** */
 
-/** @define RESPONSE_CODE Extract the code from a response. */
-#define RESPONSE_CODE(c)		(c & 0x7) // 0b00000111
+/** @define RESPONSE_STATUS Extract the status of a response. */
+#define RESPONSE_STATUS(c)		(c & 1)
+
+/** @define RESPONSE_ERROR Extract the error code from a response. */
+#define RESPONSE_ERROR(c)		(c & 0x1e)	// 0b00011110
 
 /**
  * @typedef	protocol_command_t
@@ -64,28 +67,40 @@
  * @constant	PROTO_PUT	PUT command.
  * @constant	PROTO_ADD	ADD command.
  * @constant	PROTO_UPDATE	UPDATE command.
+ * @constant	PROTO_INC	INC command.
+ * @constant	PROTO_DEC	DEC command.
+ * @constant	PROTO_START	START command.
+ * @constant	PROTO_COMMIT	COMMIT command.
+ * @constant	PROTO_ROLLBACK	ROLLBACK command.
  * @constant	PROTO_LIST	LIST command.
  * @constant	PROTO_DROP	DROP command.
  */
 typedef enum protocol_command_e {
-	PROTO_SETDB	= 0,
-	PROTO_GET	= 1,
-	PROTO_DEL	= 2,
-	PROTO_PUT	= 3,
-	PROTO_LIST	= 4,
-	PROTO_DROP	= 5
+	PROTO_SETDB	= 0x0,
+	PROTO_GET	= 0x1,
+	PROTO_DEL	= 0x2,
+	PROTO_PUT	= 0x3,
+	PROTO_ADD	= 0x4,
+	PROTO_UPDATE	= 0x5,
+	PROTO_INC	= 0x6,
+	PROTO_DEC	= 0x7,
+	PROTO_START	= 0x8,
+	PROTO_COMMIT	= 0x9,
+	PROTO_ROLLBACK	= 0xa,
+	PROTO_LIST	= 0xb,
+	PROTO_DROP	= 0xc
 } protocol_command_t;
 
 /**
  * @typedef	protocol_option_t
  *		List of command options.
- * @constant	PROTO_OPT_MIXED		Mixed option.
+ * @constant	PROTO_OPT_SYNC		Synchronous request..
  * @constant	PROTO_OPT_SERIALIZED	Serialized data.
  * @constant	PROTO_OPT_COMPRESSED	Compression activated.
  * @constant	PROTO_OPT_SERVTOSERV	Server-to-server command.
  */
 typedef enum protocol_option_e {
-	PROTO_OPT_MIXED		= 0x10,	// 0b00010000
+	PROTO_OPT_SYNC		= 0x10,	// 0b00010000
 	PROTO_OPT_SERIALIZED	= 0x20,	// 0b00100000
 	PROTO_OPT_COMPRESSED	= 0x40,	// 0b01000000
 	PROTO_OPT_SERVTOSERV	= 0x80,	// 0b10000000
@@ -102,6 +117,7 @@ typedef enum protocol_option_e {
  * @constant	RESP_ERR_TOO_MANY_DB	Too many opened databases.
  * @constant	RESP_ERR_BAD_NAME	Bad name (dbname for SETDB request,
  *					key for GET or DEL request).
+ * @constant	RESP_ERR_TRANSACTION	Transaction error.
  */
 typedef enum protocol_response_e {
 	RESP_ERR_UNDEFINED	= 0,
@@ -110,7 +126,8 @@ typedef enum protocol_response_e {
 	RESP_ERR_SERVER		= 3,
 	RESP_ERR_FULL_DB	= 4,
 	RESP_ERR_TOO_MANY_DB	= 5,
-	RESP_ERR_BAD_NAME	= 6
+	RESP_ERR_BAD_NAME	= 6,
+	RESP_ERR_TRANSACTION	= 7
 } protocol_response_t;
 
 #endif /* __PROTOCOL_H__ */

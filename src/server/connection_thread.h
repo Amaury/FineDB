@@ -2,6 +2,7 @@
 #define __CONNECTION_THREAD_H__
 
 #include <pthread.h>
+#include "ydefs.h"
 #include "yerror.h"
 #include "ydynabin.h"
 #include "finedb.h"
@@ -14,8 +15,9 @@
  * @field	finedb		Pointer to the FineDB structure.
  * @field	fd		File descriptor to the socket used to communicate
  *				with the client.
- * @field	write_sock	Nanomsg socket to communicate with the writer thread.
- * @field	dbname		Name of the selected database. NULL for the default base.
+ * @field	write_sock	Nanomsg socket to send data to the writer thread.
+ * @field	dbname		Name of the selected database (NULL = default).
+ * @field	transaction	Pointer to the running transaction. Default to NULL.
  */
 typedef struct tcp_thread_s {
 	pthread_t tid;
@@ -23,6 +25,7 @@ typedef struct tcp_thread_s {
 	int fd;
 	int write_sock;
 	char *dbname;
+	MDB_txn *transaction;
 } tcp_thread_t;
 
 /**
@@ -39,6 +42,9 @@ typedef enum tcp_state_e {
 	STATE_NAMESIZE,
 	STATE_FILENAME
 } tcp_state_t;
+
+/** @define CONNECTION_SEND_OK Send a simple OK response to the client. */
+#define CONNECTION_SEND_OK(fd)	connection_send_response(fd, RESP_OK, YFALSE, YFALSE, NULL, 0)
 
 /** @define CONNECTION_SEND_ERROR Send an error response to the client. */
 #define CONNECTION_SEND_ERROR(fd, err)	connection_send_response(fd, err, YFALSE, YFALSE, NULL, 0)

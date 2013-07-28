@@ -51,7 +51,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 
 	// not synchronized: immediate response
 	if (!sync)
-		connection_send_response(thread->fd, RESP_OK, YFALSE, NULL, 0);
+		CONNECTION_SEND_OK(thread->fd);
 
 	// creation of the message
 	if ((msg = YMALLOC(sizeof(writer_msg_t))) == NULL)
@@ -90,7 +90,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 		return (YENOERR);
 	}
 	// synchronized
-	if (database_put(thread->finedb->database, thread->dbname, msg->name, msg->data) == YENOERR) {
+	if (database_put(thread->finedb->database, thread->transaction, thread->dbname, msg->name, msg->data) == YENOERR) {
 		YLOG_ADD(YLOG_DEBUG, "Data written to database.");
 		answer = 1;
 	} else {
@@ -98,13 +98,13 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 		answer = 0;
 	}
 	YLOG_ADD(YLOG_DEBUG, "PUT command %s", (answer ? "OK" : "failed"));
-	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_NO_DATA),
-	                                 YFALSE, NULL, 0));
+	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
+	                                 YFALSE, YFALSE, NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "PUT error");
 	YFREE(name);
 	YFREE(data);
 	YFREE(msg);
-	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
+	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
 	return (YEIO);
 }

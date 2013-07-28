@@ -19,11 +19,11 @@ yerr_t command_list(tcp_thread_t *thread, ydynabin_t *buff) {
 
 	YLOG_ADD(YLOG_DEBUG, "LIST command");
 	// send the response to the client
-	result = connection_send_response(thread->fd, RESP_OK, YFALSE, NULL, 0);
+	result = CONNECTION_SEND_OK(thread->fd);
 	if (result != YENOERR)
 		goto error;
 	// send data
-	if (database_list(thread->finedb->database, thread->dbname, _command_list_loop, thread) != YENOERR)
+	if (database_list(thread->finedb->database, thread->transaction, thread->dbname, _command_list_loop, thread) != YENOERR)
 		goto error;
 	// send last byte
 	if (write(thread->fd, &last_byte, 1) != 1)
@@ -32,7 +32,7 @@ yerr_t command_list(tcp_thread_t *thread, ydynabin_t *buff) {
 	return (result);
 error:
 	YLOG_ADD(YLOG_WARN, "LIST error");
-	connection_send_response(thread->fd, RESP_SERVER_ERR, YFALSE, NULL, 0);
+	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
 	return (YEIO);
 }
 
