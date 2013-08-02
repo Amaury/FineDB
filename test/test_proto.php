@@ -11,6 +11,7 @@
 require_once('finebase/Ansi.php');
 require_once('finebase/FineTimer.php');
 require_once('finebase/FineDatasource.php');
+require_once('finebase/FineDatabase.php');
 require_once('finebase/FineNDB.php');
 require_once('finebase/FineCache.php');
 
@@ -18,6 +19,7 @@ const FINEDB_HOST = 'localhost';
 const FINEDB_PORT = 11138;
 const REDIS_DSN = 'redis://localhost:6379/0';
 const MEMCACHE_DSN = 'memcache://localhost:11211';
+const MYSQL_DSN = 'mysqli://finedb:finedb@localhost/finedb';
 
 $nbrLoops = 45;
 $dataList = array(
@@ -30,8 +32,11 @@ $timer = new FineTimer();
 $ndb = FineNDB::factory(REDIS_DSN);
 $cache = FineCache::factory(MEMCACHE_DSN);
 $couch = new Couchbase('localhost:8091', '', '', 'default');
+$db = FineDatabase::factory(MYSQL_DSN);
+$mongo = new MongoClient();
+$mongodb = $mongo->selectDB('finedb');
 
-// FineDB
+// ---------- FineDB
 print(Ansi::bold("FineDB\n"));
 $timer->start();
 for ($i = 0; $i < $nbrLoops; $i++) {
@@ -63,10 +68,80 @@ for ($i = 0; $i < $nbrLoops; $i++) {
 $timer->stop();
 fclose($sock);
 print("GET       : " . $timer->getTime() . "\n");
+exit();
 
-//exit();
 
-// Couchbase
+// ---------- MongoDB
+print(Ansi::bold("MongoDB\n"));
+$mongodb->finedb->drop();
+$timer->start();
+for ($i = 0; $i < $nbrLoops; $i++) {
+	foreach ($dataList as $key => $data) {
+		$mongodb->finedb->insert(array(
+			'_id'	=> "$key-$i",
+			'data'	=> $data
+		));
+	}
+}
+$timer->stop();
+print("PUT ASYNC : " . $timer->getTime() . "\n");
+$mongodb->finedb->drop();
+$timer->start();
+for ($i = 0; $i < $nbrLoops; $i++) {
+	foreach ($dataList as $key => $data) {
+		$mongodb->finedb->insert(array(
+			'_id'	=> "$key-$i",
+			'data'	=> $data
+		), array(
+			'fsync'	=> true,
+			'w'	=> true
+		));
+	}
+}
+$timer->stop();
+print("PUT SYNC  : " . $timer->getTime() . "\n");
+$timer->start();
+for ($i = 0; $i < $nbrLoops; $i++) {
+	foreach ($dataList as $key => $data) {
+		$value = $mongodb->finedb->findOne(array(
+			'_id'	=> "$key-$i"
+		));
+	}
+}
+$timer->stop();
+print("GET       : " . $timer->getTime() . "\n");
+exit();
+
+
+// ---------- MySQL
+print(Ansi::bold("MySQL\n"));
+$timer->start();
+for ($i = 0; $i < $nbrLoops; $i++) {
+	foreach ($dataList as $key => $data) {
+		$sql = "INSERT INTO Data
+			(name, data)
+			VALUES ('$key-$i', '" . $db->quote($data) . "')
+			ON DUPLICATE KEY UPDATE data = '" . $db->quote($data) . "'";
+		$db->exec($sql);
+	}
+}
+$timer->stop();
+print("PUT       : " . $timer->getTime() . "\n");
+$timer->start();
+for ($i = 0; $i < $nbrLoops; $i++) {
+	foreach ($dataList as $key => $data) {
+		$sql = "SELECT data
+			FROM Data
+			WHERE name = '$key-$i'";
+		$result = $db->queryOne($sql);
+	}
+}
+$timer->stop();
+print("GET       : " . $timer->getTime() . "\n");
+exit();
+
+
+// ---------- Couchbase
 print(Ansi::bold("Couchbase\n"));
 $timer->start();
 for ($i = 0; $i < $nbrLoops; $i++) {
@@ -86,7 +161,7 @@ print("GET       : " . $timer->getTime() . "\n");
 exit();
 
 
-// Redis
+// ---------- Redis
 print(Ansi::bold("Redis\n"));
 $timer->start();
 for ($i = 0; $i < $nbrLoops; $i++) {
@@ -103,7 +178,8 @@ for ($i = 0; $i < $nbrLoops; $i++) {
 $timer->stop();
 print("GET       : " . $timer->getTime() . "\n");
 
-// Memcache
+
+// ---------- Memcache
 print(Ansi::bold("Memcache\n"));
 $timer->start();
 for ($i = 0; $i < $nbrLoops; $i++) {
