@@ -38,12 +38,6 @@
 /** @define REQUEST_ADD_SYNC Add the sync option to a request code. */
 #define REQUEST_ADD_SYNC(c)		(c | PROTO_OPT_SYNC)
 
-/** @define REQUEST_ADD_DBNAME Add the dbname option to a request code. */
-#define REQUEST_ADD_DBNAME(c)		(c | PROTO_OPT_DBNAME)
-
-/** @define REQUEST_ADD_DATA Add the data option to a request code. */
-#define REQUEST_ADD_DATA(c)		(c | PROTO_OPT_DATA)
-
 /** @define REQUEST_ADD_COMPRESSeD Add the compression option to a request code. */
 #define REQUEST_ADD_COMPRESSED(c)	(c | PROTO_OPT_COMPRESSED)
 

@@ -32,7 +32,7 @@ finedb_t *finedb_init(char *db_path, unsigned short port,
 		sprintf(db_path, "%s/%s", base_path, DEFAULT_DB_PATH);
 	}
 	// open database
-	finedb->database = database_open(db_path, mapsize, nbr_dbs);
+	finedb->database = database_open(db_path, mapsize, nbr_threads, nbr_dbs);
 	if (finedb->database == NULL) {
 		YLOG_ADD(YLOG_CRIT, "Unable to open database.");
 		exit(1);

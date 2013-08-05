@@ -27,7 +27,7 @@ void *writer_loop(void *param) {
 		if (msg->type == WRITE_PUT) {
 			// add data in database
 			YLOG_ADD(YLOG_DEBUG, "WRITE '%s' => '%s'", msg->name.data, msg->data.data);
-			if (database_put(finedb->database, NULL, msg->dbname, msg->name, msg->data) == YENOERR)
+			if (database_put(finedb->database, NULL, msg->create_only, msg->dbname, msg->name, msg->data) == YENOERR)
 				YLOG_ADD(YLOG_DEBUG, "Data written to database.");
 			else
 				YLOG_ADD(YLOG_WARN, "Unable to write data into database.");

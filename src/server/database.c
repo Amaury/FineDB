@@ -1,7 +1,7 @@
 #include "database.h"
 
 /* Open a LMDB database. */
-MDB_env *database_open(const char *path, size_t mapsize, unsigned int nbr_dbs) {
+MDB_env *database_open(const char *path, size_t mapsize, unsigned int nbr_readers, unsigned int nbr_dbs) {
 	MDB_env *env;
 	int rc;
 
@@ -17,6 +17,14 @@ MDB_env *database_open(const char *path, size_t mapsize, unsigned int nbr_dbs) {
 	if (rc) {
 		YLOG_ADD(YLOG_ERR, "Unable to set mapsize to %d (%s).", mapsize, mdb_strerror(rc));
 		return (NULL);
+	}
+	// maximum number of reader threads
+	if (nbr_readers > 126) {
+		rc = mdb_env_set_maxreaders(env, nbr_readers);
+		if (rc) {
+			YLOG_ADD(YLOG_ERR, "Unable to set max readers (%s).", mdb_strerror(rc));
+			return (NULL);
+		}
 	}
 	// setting the maximum number of opened databases
 	if (nbr_dbs > 1) {
@@ -78,12 +86,16 @@ void database_transaction_rollback(MDB_txn *transaction) {
 }
 
 /* Add or update a key in database. */
-yerr_t database_put(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t key, ybin_t data) {
+yerr_t database_put(MDB_env *env, MDB_txn *transaction, ybool_t create_only, const char *name, ybin_t key, ybin_t data) {
 	MDB_dbi dbi;
 	MDB_txn *txn = transaction;
 	MDB_val db_key, db_data;
 	int rc;
+	unsigned int flags = 0;
 
+	// create only mode
+	if (create_only)
+		flags = MDB_NOOVERWRITE;
 	// transaction init
 	if (txn == NULL && (txn = database_transaction_start(env, YFALSE)) == NULL)
 		return (YEACCESS);
@@ -99,7 +111,7 @@ yerr_t database_put(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	db_data.mv_size = data.len;
 	db_data.mv_data = data.data;
 	// put data
-	rc = mdb_put(txn, dbi, &db_key, &db_data, 0);
+	rc = mdb_put(txn, dbi, &db_key, &db_data, flags);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to write data in database (%s).", mdb_strerror(rc));
 		return (YEACCESS);

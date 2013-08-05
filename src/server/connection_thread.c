@@ -107,14 +107,18 @@ void *connection_thread_execution(void *param) {
 				break;
 			case PROTO_PUT:
 				YLOG_ADD(YLOG_DEBUG, "PUT command");
-				if (command_put(thread, sync, compress, buff) != YENOERR)
+				if (command_put(thread, sync, compress, YFALSE, YFALSE, buff) != YENOERR)
 					goto end_of_connection;
 				break;
 			case PROTO_ADD:
 				YLOG_ADD(YLOG_DEBUG, "ADD command");
+				if (command_put(thread, sync, compress, YTRUE, YFALSE, buff) != YENOERR)
+					goto end_of_connection;
 				break;
 			case PROTO_UPDATE:
 				YLOG_ADD(YLOG_DEBUG, "UPDATE command");
+				if (command_put(thread, sync, compress, YFALSE, YTRUE, buff) != YENOERR)
+					goto end_of_connection;
 				break;
 			case PROTO_INC:
 				YLOG_ADD(YLOG_DEBUG, "INC command");

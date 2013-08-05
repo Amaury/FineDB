@@ -9,7 +9,7 @@
 #include "database.h"
 
 /* Process a PUT command. */
-yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabin_t *buff) {
+yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t create_only, ybool_t update_only, ydynabin_t *buff) {
 	uint16_t *pname_len, name_len;
 	uint32_t *pdata_len, data_len;
 	void *ptr, *name = NULL, *data = NULL;
@@ -20,6 +20,8 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 	struct snappy_env zip_env;
 
 	YLOG_ADD(YLOG_DEBUG, "PUT command");
+	if (update_only)
+		sync = YTRUE;
 	// read name length
 	if (connection_read_data(thread->fd, buff, sizeof(name_len)) != YENOERR)
 		goto error;
@@ -56,6 +58,8 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 	// creation of the message
 	if ((msg = YMALLOC(sizeof(writer_msg_t))) == NULL)
 		goto error;
+	msg->type = WRITE_PUT;
+	msg->create_only = create_only;
 	ybin_set(&msg->name, name, name_len);
 	if (compress) {
 		ybin_set(&msg->data, data, data_len);
@@ -90,7 +94,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ydynabi
 		return (YENOERR);
 	}
 	// synchronized
-	if (database_put(thread->finedb->database, thread->transaction, thread->dbname, msg->name, msg->data) == YENOERR) {
+	if (database_put(thread->finedb->database, thread->transaction, create_only, thread->dbname, msg->name, msg->data) == YENOERR) {
 		YLOG_ADD(YLOG_DEBUG, "Data written to database.");
 		answer = 1;
 	} else {

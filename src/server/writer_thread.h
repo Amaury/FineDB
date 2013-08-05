@@ -19,16 +19,18 @@ typedef enum writer_action_e {
 /**
  * @typedef	writer_msg_t
  *		Structure used to transfer data to the writer thread.
- * @field	type	Type of action (WRITE_PUT, WRITE_DEL).
- * @field	dbname	Name of the database. NULL by default.
- * @field	name	Key.
- * @field	data	Data.
+ * @field	type		Type of action (WRITE_PUT, WRITE_DEL).
+ * @field	dbname		Name of the database. NULL by default.
+ * @field	name		Key.
+ * @field	data		Data.
+ * @field	create_only	YTRUE if the key must not exist already.
  */
 typedef struct writer_msg_s {
 	writer_action_t type;
 	char *dbname;
 	ybin_t name;
 	ybin_t data;
+	ybool_t create_only;
 } writer_msg_t;
 
 /**

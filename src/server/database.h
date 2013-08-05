@@ -12,12 +12,13 @@ typedef yerr_t (*database_callback)(void *ptr, ybin_t key, ybin_t data);
 
 /**
  * Open a LMDB database.
- * @param	path	Path to the database data directory.
- * @param	mapsize	Database map size.
- * @param	nbr_dbs	Maximum number of opened databases.
+ * @param	path		Path to the database data directory.
+ * @param	mapsize		Database map size.
+ * @param	nbr_readers	Maximum number of reader threads.
+ * @param	nbr_dbs		Maximum number of opened databases.
  * @return	A pointer to the allocated environment, or NULL.
  */
-MDB_env *database_open(const char *path, size_t mapsize, unsigned int nbr_dbs);
+MDB_env *database_open(const char *path, size_t mapsize, unsigned int nbr_readers, unsigned int nbr_dbs);
 
 /**
  * Close a database and free its structure.
@@ -50,12 +51,13 @@ void database_transaction_rollback(MDB_txn *transaction);
  * Add or update a key in database.
  * @param	env		Database environment.
  * @param	transaction	Pointer to the transaction. NULL for standalone transaction.
+ * @param	create_only	YTRUE if the key must not already exist.
  * @param	name		Database name. NULL for the default DB.
  * @param	key		Key binary data.
  * @param	data		Binary data.
  * @return	YENOERR 	if OK.
  */
-yerr_t database_put(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t key, ybin_t data);
+yerr_t database_put(MDB_env *env, MDB_txn *transaction, ybool_t create_only, const char *name, ybin_t key, ybin_t data);
 
 /**
  * Remove a key from database.
