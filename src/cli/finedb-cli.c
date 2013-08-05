@@ -28,22 +28,29 @@
 /**
  * Options structure.
  * @field	fd		Socket descriptor.
- * @field	dbname		Database's name.
  * @field	sync		Synchronized option.
  */
 typedef struct cli_s {
 	int	fd;
-	char	*dbname;
 	ybool_t	sync;
 } cli_t;
 
 // function declarations
+void print_response(char c);
 void command_help(void);
-void command_get(cli_t *cli, char *pt);
-void command_put(cli_t *cli, char *pt);
-void command_del(cli_t *cli, char *pt);
-void command_list(cli_t *cli, char *pt);
 void command_use(cli_t *cli, char *pt);
+void command_get(cli_t *cli, char *pt);
+void command_del(cli_t *cli, char *pt);
+void command_put(cli_t *cli, char *pt);
+void command_add(cli_t *cli, char *pt);
+void command_update(cli_t *cli, char *pt);
+void command_inc(cli_t *cli, char *pt);
+void command_dec(cli_t *cli, char *pt);
+void command_start(cli_t *cli);
+void command_commit(cli_t *cli);
+void command_rollback(cli_t *cli);
+void command_list(cli_t *cli, char *pt);
+void command_drop(cli_t *cli, char *pt);
 void command_sync(cli_t *cli);
 void command_async(cli_t *cli);
 
@@ -96,16 +103,30 @@ int main(int argc, char *argv[]) {
 			exit(0);
 		if (!strcasecmp(cmd, "help") || cmd[0] == '?')
 			command_help();
-		else if (!strcasecmp(cmd, "put"))
-			command_put(cli, pt);
+		else if (!strcasecmp(cmd, "use"))
+			command_use(cli, pt);
 		else if (!strcasecmp(cmd, "get"))
 			command_get(cli, pt);
 		else if (!strcasecmp(cmd, "del"))
 			command_del(cli, pt);
+		else if (!strcasecmp(cmd, "put"))
+			command_put(cli, pt);
+		else if (!strcasecmp(cmd, "add"))
+			command_add(cli, pt);
+		else if (!strcasecmp(cmd, "update"))
+			command_update(cli, pt);
+		else if (!strcasecmp(cmd, "inc"))
+			command_inc(cli, pt);
+		else if (!strcasecmp(cmd, "dec"))
+			command_dec(cli, pt);
+		else if (!strcasecmp(cmd, "start"))
+			command_start(cli);
+		else if (!strcasecmp(cmd, "commit"))
+			command_commit(cli);
+		else if (!strcasecmp(cmd, "rollback"))
+			command_rollback(cli);
 		else if (!strcasecmp(cmd, "list"))
 			command_list(cli, pt);
-		else if (!strcasecmp(cmd, "use"))
-			command_use(cli, pt);
 		else if (!strcasecmp(cmd, "sync"))
 			command_sync(cli);
 		else if (!strcasecmp(cmd, "async"))
@@ -116,7 +137,6 @@ int main(int argc, char *argv[]) {
 
 /* Defines the used database. */
 void command_use(cli_t *cli, char *pt) {
-	YFREE(cli->dbname);
 	if (!strlen(pt) || !strcasecmp(pt, "default")) {
 		// use default database
 		printf("%c[2mUse default database%c[0m\n", 27, 27);
@@ -150,6 +170,68 @@ void command_help() {
 		"    async\n"
 		"    quit\n"
 		"%c[0m", 27, 27);
+}
+
+/* Delete a key. */
+void command_del(cli_t *cli, char *pt) {
+
+}
+
+/* Start a transaction. */
+void command_start(cli_t *cli) {
+	char c = PROTO_START;
+	int rc;
+
+	// send data
+	rc = write(cli->fd, &c, 1);
+	if (rc != 1) {
+		printf("%c[1Connection error%c[0m\n", 27, 27);
+		return;
+	}
+	// get response
+	if (read(cli->fd, &c, 1) != 1) {
+		printf("%c[1Connection error%c[0m\n", 27, 27);
+		return;
+	}
+	print_response(c);
+}
+
+/* Commit a transaction. */
+void command_commit(cli_t *cli) {
+	char c = PROTO_COMMIT;
+	int rc;
+
+	// send data
+	rc = write(cli->fd, &c, 1);
+	if (rc != 1) {
+		printf("%c[1Connection error%c[0m\n", 27, 27);
+		return;
+	}
+	// get response
+	if (read(cli->fd, &c, 1) != 1) {
+		printf("%c[1Connection error%c[0m\n", 27, 27);
+		return;
+	}
+	print_response(c);
+}
+
+/* Rollback a transaction. */
+void command_rollback(cli_t *cli) {
+	char c = PROTO_ROLLBACK;
+	int rc;
+
+	// send data
+	rc = write(cli->fd, &c, 1);
+	if (rc != 1) {
+		printf("%c[1Connection error%c[0m\n", 27, 27);
+		return;
+	}
+	// get response
+	if (read(cli->fd, &c, 1) != 1) {
+		printf("%c[1Connection error%c[0m\n", 27, 27);
+		return;
+	}
+	print_response(c);
 }
 
 /* Put a key/value in database. */
@@ -267,6 +349,7 @@ void command_put(cli_t *cli, char *pt) {
 		         (c == RESP_NO_DATA ? "no data" : "unknown"))), 27);
 }
 
+/* Fetch a value from its key. */
 void command_get(cli_t *cli, char *pt) {
 	char *pt2, *key;
 	char *buffer, buff[5];
@@ -360,10 +443,7 @@ void command_get(cli_t *cli, char *pt) {
 	YFREE(buffer);
 }
 
-void command_del(cli_t *cli, char *pt) {
-
-}
-
+/* List the keys stored in database. */
 void command_list(cli_t *cli, char *pt) {
 	char *buffer, c;
 	size_t sz, offset, length, rc;
@@ -431,3 +511,15 @@ void command_list(cli_t *cli, char *pt) {
 		YFREE(buffer);
 	}
 }
+
+/* Tell if a response is correct or not. */
+void print_response(char c) {
+	if (c == RESP_OK)
+		printf("%c[2mOK%c[0m\n", 27, 27);
+	else
+		printf("%c[2mERROR: %s%c[0m\n", 27,
+		       (c == RESP_PROTO ? "protocol" :
+		        (c == RESP_SERVER_ERR ? "server" :
+		         (c == RESP_NO_DATA ? "no data" : "unknown"))), 27);
+}
+
