@@ -192,6 +192,9 @@ typedef long double f96_t;
 /*! @define IS_HEXA True if the character is an hexadecimal digit. */
 #define	IS_HEXA(c)	(IS_NUM(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
 
+/*! @define IS_PRINTABLE True if the character is printable. */
+#define IS_PRINTABLE(c)	(c >= 0x20 && c <= 0x7e)
+
 /*! @define ARRAY_SIZE Return the number of elements in an array. */
 #define ARRAY_SIZE(a)	(sizeof(a) / sizeof(a[0]))
 

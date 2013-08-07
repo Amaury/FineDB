@@ -27,6 +27,8 @@ ydynabin_t *ydynabin_new(void *data, size_t len, ybool_t must_copy) {
 void ydynabin_delete(ydynabin_t *container) {
 	void *ptr;
 
+	if (container == NULL)
+		return;
 	if (container->data) {
 		ptr = (void*)((size_t)container->data - container->offset);
 		YFREE(ptr);
