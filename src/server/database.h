@@ -76,7 +76,7 @@ yerr_t database_del(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
  * @param	name		Database name. NULL for the default DB.
  * @param	key		Key binary data.
  * @param	data		Pointer to an allocated data space.
- * @return	YENOERR if OK.
+ * @return	YENOERR if OK, YENODATA if the key doesn't exists. YEACCESS if an error occurs.
  */
 yerr_t database_get(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t key, ybin_t *data);
 

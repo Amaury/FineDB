@@ -63,18 +63,19 @@ void *connection_thread_execution(void *param) {
 	}
 	// loop to process new connections
 	for (; ; ) {
+		ydynabin_t *buff = NULL;
+
 		// waiting for a new connection to handle
 		if (nn_recv(incoming_socket, &thread->fd, sizeof(int), 0) < 0 ||
 		    thread->fd < 0)
 			continue;
 		YLOG_ADD(YLOG_DEBUG, "Process an incoming connection.");
+		buff = ydynabin_new(NULL, 0, YFALSE);
 		// loop on incoming requests
 		for (; ; ) {
-			ydynabin_t *buff;
 			unsigned char *command;
 			ybool_t sync, compress, serialized;
 
-			buff = ydynabin_new(NULL, 0, YFALSE);
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
 			if (connection_read_data(thread->fd, buff, 1) != YENOERR) {
 				YLOG_ADD(YLOG_DEBUG, "The socket was closed.");
@@ -165,6 +166,7 @@ end_of_connection:
 		}
 		close(thread->fd);
 		YFREE(thread->dbname);
+		ydynabin_delete(buff);
 	}
 	pthread_exit(NULL);
 }
@@ -200,6 +202,7 @@ yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serial
 	ssize_t expected = 1, rc;
 	uint32_t data_nlen;
 
+	YLOG_ADD(YLOG_DEBUG, "Send response (%d).", code);
 	mh.msg_name = NULL;
 	mh.msg_namelen = 0;
 	mh.msg_iov = iov;
@@ -213,8 +216,8 @@ yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serial
 		code_byte = RESPONSE_ADD_SERIALIZED(code_byte);
 	if (compressed)
 		code_byte = RESPONSE_ADD_COMPRESSED(code_byte);
-	iov[0].iov_base = (caddr_t)&code;
-	iov[0].iov_len = sizeof(code);
+	iov[0].iov_base = (caddr_t)&code_byte;
+	iov[0].iov_len = sizeof(code_byte);
 	// data
 	if (data != NULL) {
 		data_nlen = htonl((uint32_t)data_len);
@@ -231,6 +234,9 @@ yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serial
 		return (YEIO);
 	} else if (rc < expected) {
 		YLOG_ADD(YLOG_WARN, "Unable to send the complete response (%d / %d).", rc, expected);
+		return (YEIO);
+	} else if (rc > expected) {
+		YLOG_ADD(YLOG_WARN, "Too much data were sent (%d / %d).", rc, expected);
 		return (YEIO);
 	}
 	YLOG_ADD(YLOG_DEBUG, "Sent %d bytes '%s'.", rc, data);

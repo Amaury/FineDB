@@ -33,7 +33,10 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 	bin_key.len = (size_t)name_len;
 	bin_key.data = name;
 	// get data
-	if (database_get(thread->finedb->database, thread->transaction, thread->dbname, bin_key, &bin_data) != YENOERR)
+	result = database_get(thread->finedb->database, thread->transaction, thread->dbname, bin_key, &bin_data);
+	if (result == YENODATA)
+		goto no_data;
+	if (result != YENOERR)
 		goto error;
 	if (bin_data.len && !compress) {
 		// uncompress data before sending them
@@ -56,6 +59,11 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 	result = connection_send_response(thread->fd, RESP_OK, serialized, compress,
 	                                  bin_data.data, bin_data.len);
 	return (result);
+no_data:
+	YLOG_ADD(YLOG_DEBUG, "GET no data");
+	YFREE(name);
+	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_BAD_NAME);
+	return (YENOERR);
 error:
 	YLOG_ADD(YLOG_WARN, "GET error");
 	YFREE(name);

@@ -16,7 +16,7 @@ OBJS    = $(SRC:.c=.o)
 all: clean test_lmdb
 
 clean:
-	rm -f test_put test_get
+	rm -f test_lmdb $(OBJS)
 
 test_lmdb: $(OBJS)
 	gcc $(OBJS) $(LDFLAGS) -o test_lmdb

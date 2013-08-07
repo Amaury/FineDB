@@ -178,19 +178,27 @@ yerr_t database_get(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	db_key.mv_data = key.data;
 	// get data
 	rc = mdb_get(txn, dbi, &db_key, &db_data);
-	if (rc) {
-		YLOG_ADD(YLOG_WARN, "Unable to read data in database (%s).", mdb_strerror(rc));
-		return (YEACCESS);
-	}
 	// end of transaction
 	if (transaction == NULL)
 		database_transaction_rollback(txn);
 	// close database
 	mdb_dbi_close(env, dbi);
 	// return
-	data->len = db_data.mv_size;
-	data->data = db_data.mv_data;
-	return (YENOERR);
+	if (!rc) {
+		// OK
+		data->len = db_data.mv_size;
+		data->data = db_data.mv_data;
+		return (YENOERR);
+	}
+	// KO
+	data->len = 0;
+	data->data = NULL;
+	if (rc == MDB_NOTFOUND) {
+		YLOG_ADD(YLOG_DEBUG, "No data (%s).", mdb_strerror(rc));
+		return (YENODATA);
+	}
+	YLOG_ADD(YLOG_WARN, "Unable to read data in database (%s).", mdb_strerror(rc));
+	return (YEACCESS);
 }
 
 /* Open a cursor on a database, and send every key/value pair to a callback. */

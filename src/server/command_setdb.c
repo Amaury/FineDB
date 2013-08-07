@@ -13,7 +13,7 @@ yerr_t command_setdb(tcp_thread_t *thread, ydynabin_t *buff) {
 	unsigned char *pdbname_len, dbname_len;
 	char *dbname = NULL;
 	void *ptr;
-	yerr_t result;
+	yerr_t result = YENOERR;
 
 	YLOG_ADD(YLOG_DEBUG, "SETDB command");
 	// read dbname length
