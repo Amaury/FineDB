@@ -286,7 +286,7 @@ yerr_t database_drop(MDB_env *env, MDB_txn *transaction, const char *name) {
 	rc = mdb_drop(txn, dbi, 1);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to drop database (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
 	}
 	// close database
 	mdb_dbi_close(env, dbi);
@@ -296,6 +296,6 @@ end_of_process:
 	    database_transaction_commit(txn) != YENOERR)
 		return (YEACCESS);
 	if (retval != YENOERR && transaction == NULL)
-		database_transaction_abort(txn);
+		database_transaction_rollback(txn);
 	return (retval);
 }
