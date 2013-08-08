@@ -92,6 +92,7 @@ yerr_t database_put(MDB_env *env, MDB_txn *transaction, ybool_t create_only, con
 	MDB_val db_key, db_data;
 	int rc;
 	unsigned int flags = 0;
+	yerr_t retval = YENOERR;
 
 	// create only mode
 	if (create_only)
@@ -103,7 +104,8 @@ yerr_t database_put(MDB_env *env, MDB_txn *transaction, ybool_t create_only, con
 	rc = mdb_dbi_open(txn, name, MDB_CREATE, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
+		goto end_of_process;
 	}
 	// key and data init
 	db_key.mv_size = key.len;
@@ -114,14 +116,18 @@ yerr_t database_put(MDB_env *env, MDB_txn *transaction, ybool_t create_only, con
 	rc = mdb_put(txn, dbi, &db_key, &db_data, flags);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to write data in database (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
 	}
-	// transaction commit
-	if (transaction == NULL && database_transaction_commit(txn) != YENOERR)
-		return (YEACCESS);
 	// close database
 	mdb_dbi_close(env, dbi);
-	return (YENOERR);
+end_of_process:
+	// transaction commit
+	if (retval == YENOERR && transaction == NULL &&
+	    database_transaction_commit(txn) != YENOERR)
+		retval = YEACCESS;
+	if (retval != YENOERR && transaction == NULL)
+		database_transaction_rollback(txn);
+	return (retval);
 }
 
 /* Remove a key from database. */
@@ -130,6 +136,7 @@ yerr_t database_del(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	MDB_txn *txn = transaction;
 	MDB_val db_key;
 	int rc;
+	yerr_t retval = YENOERR;
 
 	// transaction init
 	if (txn == NULL && (txn = database_transaction_start(env, YFALSE)) == NULL)
@@ -138,7 +145,8 @@ yerr_t database_del(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
+		goto end_of_process;
 	}
 	// key and data init
 	db_key.mv_size = key.len;
@@ -147,14 +155,18 @@ yerr_t database_del(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	rc = mdb_del(txn, dbi, &db_key, NULL);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to write data in database (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
 	}
-	// transaction commit
-	if (transaction == NULL && database_transaction_commit(txn) != YENOERR)
-		return (YEACCESS);
 	// close database
 	mdb_dbi_close(env, dbi);
-	return (YENOERR);
+end_of_process:
+	// transaction commit
+	if (retval == YENOERR && transaction == NULL &&
+	    database_transaction_commit(txn) != YENOERR)
+		retval = YEACCESS;
+	if (retval != YENOERR && transaction == NULL)
+		database_transaction_rollback(txn);
+	return (retval);
 }
 
 /* Get a key from database. */
@@ -163,6 +175,7 @@ yerr_t database_get(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	MDB_txn *txn = transaction;
 	MDB_val db_key, db_data;
 	int rc;
+	yerr_t retval = YENOERR;
 
 	// transaction init
 	if (txn == NULL && (txn = database_transaction_start(env, YTRUE)) == NULL)
@@ -171,7 +184,8 @@ yerr_t database_get(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
+		goto end_of_process;
 	}
 	// key and data init
 	db_key.mv_size = key.len;
@@ -181,6 +195,7 @@ yerr_t database_get(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	// end of transaction
 	if (transaction == NULL)
 		database_transaction_rollback(txn);
+end_of_process:
 	// close database
 	mdb_dbi_close(env, dbi);
 	// return
@@ -193,6 +208,8 @@ yerr_t database_get(MDB_env *env, MDB_txn *transaction, const char *name, ybin_t
 	// KO
 	data->len = 0;
 	data->data = NULL;
+	if (retval != YENOERR)
+		return (retval);
 	if (rc == MDB_NOTFOUND) {
 		YLOG_ADD(YLOG_DEBUG, "No data (%s).", mdb_strerror(rc));
 		return (YENODATA);
@@ -208,6 +225,7 @@ yerr_t database_list(MDB_env *env, MDB_txn *transaction, const char *name, datab
 	MDB_cursor *cursor;
 	MDB_val db_key, db_data;
 	int rc;
+	yerr_t retval = YENOERR;
 
 	// transaction init
 	if (txn == NULL && (txn = database_transaction_start(env, YTRUE)) == NULL)
@@ -216,13 +234,15 @@ yerr_t database_list(MDB_env *env, MDB_txn *transaction, const char *name, datab
 	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
+		goto failure;
 	}
 	// open cursor
 	rc = mdb_cursor_open(txn, dbi, &cursor);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open cursor on database (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
+		goto end_of_process;
 	}
 	// loop on cursor
 	while ((rc = mdb_cursor_get(cursor, &db_key, &db_data, MDB_NEXT)) == 0) {
@@ -235,12 +255,14 @@ yerr_t database_list(MDB_env *env, MDB_txn *transaction, const char *name, datab
 	}
 	// close cursor
 	mdb_cursor_close(cursor);
+end_of_process:
+	// close database
+	mdb_dbi_close(env, dbi);
+failure:
 	// end of transaction
 	if (transaction == NULL)
 		database_transaction_rollback(txn);
-	// close database
-	mdb_dbi_close(env, dbi);
-	return (YENOERR);
+	return (retval);
 }
 
 /* Remove a database and its keys. */
@@ -248,6 +270,7 @@ yerr_t database_drop(MDB_env *env, MDB_txn *transaction, const char *name) {
 	MDB_dbi dbi;
 	MDB_txn *txn = transaction;
 	int rc;
+	yerr_t retval = YENOERR;
 
 	// transaction init
 	if (txn == NULL && (txn = database_transaction_start(env, YFALSE)) == NULL)
@@ -256,7 +279,8 @@ yerr_t database_drop(MDB_env *env, MDB_txn *transaction, const char *name) {
 	rc = mdb_dbi_open(txn, name, 0, &dbi);
 	if (rc) {
 		YLOG_ADD(YLOG_WARN, "Unable to open database handle (%s).", mdb_strerror(rc));
-		return (YEACCESS);
+		retval = YEACCESS;
+		goto end_of_process;
 	}
 	// drop database
 	rc = mdb_drop(txn, dbi, 1);
@@ -264,10 +288,14 @@ yerr_t database_drop(MDB_env *env, MDB_txn *transaction, const char *name) {
 		YLOG_ADD(YLOG_WARN, "Unable to drop database (%s).", mdb_strerror(rc));
 		return (YEACCESS);
 	}
-	// transaction commit
-	if (transaction == NULL && database_transaction_commit(txn) != YENOERR)
-		return (YEACCESS);
 	// close database
 	mdb_dbi_close(env, dbi);
-	return (YENOERR);
+end_of_process:
+	// transaction commit
+	if (retval == YENOERR && transaction == NULL &&
+	    database_transaction_commit(txn) != YENOERR)
+		return (YEACCESS);
+	if (retval != YENOERR && transaction == NULL)
+		database_transaction_abort(txn);
+	return (retval);
 }
