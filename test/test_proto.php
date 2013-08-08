@@ -48,6 +48,7 @@ for ($i = 0; $i < $nbrLoops; $i++) {
 }
 $timer->stop();
 print("PUT ASYNC : " . $timer->getTime() . "\n");
+exit();
 $timer->start();
 for ($i = 0; $i < $nbrLoops; $i++) {
 	foreach ($dataList as $key => $data) {

@@ -53,14 +53,14 @@ yerr_t database_put(MDB_env *env, const char *name, ybin_t key, ybin_t data) {
 	}
 	printf("après le put : %lx\n", (size_t)db_data.mv_data);
 	memcpy(db_data.mv_data, data.data, data.len);
+	// close database
+	mdb_dbi_close(env, dbi);
 	// transaction commit
 	rc = mdb_txn_commit(txn);
 	if (rc) {
 		printf("Unable to commit transaction (%s).\n", mdb_strerror(rc));
 		return (YEACCESS);
 	}
-	// close database
-	mdb_dbi_close(env, dbi);
 	return (YENOERR);
 }
 
@@ -91,10 +91,10 @@ yerr_t database_get(MDB_env *env, const char *name, ybin_t key, ybin_t *data) {
 		printf("Unable to read data in database (%s).\n", mdb_strerror(rc));
 		return (YEACCESS);
 	}
-	// end of transaction
-	mdb_txn_abort(txn);
 	// close database
 	mdb_dbi_close(env, dbi);
+	// end of transaction
+	mdb_txn_abort(txn);
 	// return
 	data->len = db_data.mv_size;
 	data->data = db_data.mv_data;
