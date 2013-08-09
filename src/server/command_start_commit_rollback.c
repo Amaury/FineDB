@@ -6,9 +6,9 @@
 /* Process a START command. */
 yerr_t command_start(tcp_thread_t *thread) {
 	YLOG_ADD(YLOG_DEBUG, "START command");
-	// check free transaction
+	// rollback previous transaction
 	if (thread->transaction != NULL)
-		goto error;
+		database_transaction_rollback(thread->transaction);
 	// open transaction
 	thread->transaction = database_transaction_start(thread->finedb->database, YFALSE);
 	if (thread->transaction == NULL)
