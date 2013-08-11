@@ -18,6 +18,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t
 	size_t zip_len;
 	char *zip_data = NULL;
 	struct snappy_env zip_env;
+	MDB_txn *txn = thread->transaction;
 
 	YLOG_ADD(YLOG_DEBUG, "PUT command");
 	if (update_only)
@@ -52,7 +53,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t
 	}
 
 	// not synchronized: immediate response
-	if (!sync)
+	if (!sync && !update_only)
 		CONNECTION_SEND_OK(thread->fd);
 
 	// creation of the message
@@ -84,7 +85,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t
 		ybin_set(&msg->data, zip_data, zip_len);
 		YFREE(data);
 	}
-	if (!sync) {
+	if (!sync && !update_only) {
 		// not synchronized, send the message to the writer thread
 		msg->dbname = thread->dbname ? strdup(thread->dbname) : NULL;
 		if (nn_send(thread->write_sock, &msg, sizeof(msg), 0) < 0) {
@@ -94,13 +95,44 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t
 		return (YENOERR);
 	}
 	// synchronized
-	if (database_put(thread->finedb->database, thread->transaction, create_only, thread->dbname, msg->name, msg->data) == YENOERR) {
+	if (update_only) {
+		// update only: open a transaction and check if the key already exists
+		ybin_t data;
+		int rc;
+
+		YLOG_ADD(YLOG_DEBUG, "Update only!");
+		if (txn == NULL && (txn = database_transaction_start(thread->finedb->database, YFALSE)) == NULL) {
+			YLOG_ADD(YLOG_WARN, "Unable to open transaction.");
+			goto error;
+		}
+		rc = database_get(thread->finedb->database, txn, thread->dbname, msg->name, &data);
+		if (rc != YENOERR) {
+			if (thread->transaction == NULL)
+				database_transaction_rollback(txn);
+			if (rc == YENODATA) {
+				YLOG_ADD(YLOG_DEBUG, "Key doesn't exist.");
+				answer = 0;
+				goto end_of_process;
+			} else {
+				YLOG_ADD(YLOG_WARN, "Unable to check the key.");
+				goto error;
+			}
+		}
+	}
+	if (database_put(thread->finedb->database, txn, create_only, thread->dbname, msg->name, msg->data) == YENOERR) {
 		YLOG_ADD(YLOG_DEBUG, "Data written to database.");
 		answer = 1;
 	} else {
 		YLOG_ADD(YLOG_WARN, "Unable to write data into database.");
 		answer = 0;
 	}
+	// if it was an update, the transaction is closed
+	if (update_only && thread->transaction == NULL &&
+	    database_transaction_commit(txn) != YENOERR) {
+		YLOG_ADD(YLOG_WARN, "Unable to commit transaction.");
+		goto error;
+	}
+end_of_process:
 	YLOG_ADD(YLOG_DEBUG, "PUT command %s", (answer ? "OK" : "failed"));
 	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
 	                                 YFALSE, YFALSE, NULL, 0));

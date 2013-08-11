@@ -29,8 +29,8 @@ static void signal_handler(int signal);
 static void usage() {
 	printf("Usage: finedb [-t number] [-n number] [-s number] [-p port] [-f path] [-h] [-d]\n"
 		"\t-t number    Set the number of connection threads.\n"
-		"\t-n number	Set the maximum number of opened databases.\n"
-		"\t-s number	Set the database map size (maximum size on disk).\n"
+		"\t-n number    Set the maximum number of opened databases.\n"
+		"\t-s number    Set the database map size (maximum size on disk).\n"
 		"\t-p port      Listening port number.\n"
 		"\t-f path      Path to the database directory.\n"
 		"\t-h           Shows this help and exits.\n"
