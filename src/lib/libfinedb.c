@@ -206,7 +206,7 @@ int finedb_del(finedb_client_t *client, ybin_t key) {
 		struct msghdr mh;
 		uint16_t key_nlen;
 
-		code = PROTO_GET;
+		code = PROTO_DEL;
 		if (client->sync)
 			code = REQUEST_ADD_SYNC(code);
 		key_nlen = htons((uint16_t)key.len);
