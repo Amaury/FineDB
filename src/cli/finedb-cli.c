@@ -10,17 +10,23 @@
 #include <stdarg.h>
 #include <string.h>
 #include <strings.h>
+#include "ydefs.h"
 #include "libfinedb.h"
 
 /**
  * Options structure.
- * @field	finedb	Pointer to the client structure.
- * @field	dbname	Name of the current database;
+ * @field	finedb		Pointer to the client structure.
+ * @field	dbname		Name of the current database.
+ * @field	in_transaction	YTRUE if a transaction is opened.
  */
 typedef struct cli_s {
 	finedb_client_t *finedb;
 	char *dbname;
+	ybool_t in_transaction;
 } cli_t;
+
+/** @define DEFAULT_HOST Default hostname of the server. */
+#define DEFAULT_HOST	"localhost"
 
 /** @define LTRIM Move forward a pointer to skip spaces. */
 #define LTRIM(pt)	while(*pt && IS_SPACE(*pt)) ++pt;
@@ -48,15 +54,13 @@ void command_async(cli_t *cli);
 
 int main(int argc, char *argv[]) {
 	cli_t cli;
-	char buff[8196];
+	char buff[8196], *hostname = DEFAULT_HOST;
 	size_t bufsz;
 
-	if (argc == 1) {
-		printf_color("red", "Usage: finedb-cli hostname\n");
-		exit(1);
-	}
 	bzero(&cli, sizeof(cli_t));
-	if ((cli.finedb = finedb_connect(argv[1], 11138)) == NULL) {
+	if (argc == 2)
+		hostname = argv[1];
+	if ((cli.finedb = finedb_connect(hostname, 11138)) == NULL) {
 		printf_color("red", "Unable to connect to server '%s' on port '%d'.\n", argv[1], 11138);
 		exit(2);
 	}
@@ -79,6 +83,8 @@ int main(int argc, char *argv[]) {
 		*pt++ = '\0';
 		LTRIM(pt);
 		// command management
+		if (cmd[0] == '\0')
+			continue;
 		if (!strcasecmp(cmd, "exit") || !strcasecmp(cmd, "quit"))
 			exit(0);
 		if (!strcasecmp(cmd, "help") || cmd[0] == '?')
@@ -94,7 +100,7 @@ int main(int argc, char *argv[]) {
 		else if (!strcasecmp(cmd, "add"))
 			command_send_data(&cli, pt, YTRUE, YFALSE);
 		else if (!strcasecmp(cmd, "update"))
-			command_send_data(&cli, pt, YTRUE, YFALSE);
+			command_send_data(&cli, pt, YFALSE, YTRUE);
 		else if (!strcasecmp(cmd, "inc"))
 			command_inc(&cli, pt);
 		else if (!strcasecmp(cmd, "dec"))
@@ -308,36 +314,50 @@ void command_dec(cli_t *cli, char *pt) {
 void command_start(cli_t *cli) {
 	int rc;
 
+	if (cli->in_transaction) {
+		printf_color("red", "A transaction is already open. It will be rollbacked.\n");
+	}
 	rc = finedb_start(cli->finedb);
 	if (rc) {
-		printf_color("red", "Server error.");
+		printf_color("red", "Server error.\n");
 		return;
 	}
 	printf_decorated("faint", "Transaction started.\n");
+	cli->in_transaction = YTRUE;
 }
 
 /* Commit a transaction. */
 void command_commit(cli_t *cli) {
 	int rc;
 
+	if (!cli->in_transaction) {
+		printf_color("red", "No opened transaction.\n");
+		return;
+	}
 	rc = finedb_commit(cli->finedb);
 	if (rc) {
-		printf_color("red", "Server error.");
+		printf_color("red", "Server error.\n");
 		return;
 	}
 	printf_decorated("faint", "Transaction committed.\n");
+	cli->in_transaction = YFALSE;
 }
 
 /* Rollback a transaction. */
 void command_rollback(cli_t *cli) {
 	int rc;
 
+	if (!cli->in_transaction) {
+		printf_color("red", "No opened transaction.\n");
+		return;
+	}
 	rc = finedb_rollback(cli->finedb);
 	if (rc) {
-		printf_color("red", "Server error.");
+		printf_color("red", "Server error.\n");
 		return;
 	}
 	printf_decorated("faint", "Transaction aborted.\n");
+	cli->in_transaction = YFALSE;
 }
 
 #if 0
