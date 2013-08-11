@@ -49,7 +49,7 @@ MDB_env *database_open(const char *path, size_t mapsize, unsigned int nbr_reader
 void database_close(MDB_env *env) {
 	YLOG_ADD(YLOG_DEBUG, "Close database.");
 	mdb_env_close(env);
-	YLOG_ADD(YLOG_DEBUG, "Datbase closed.");
+	YLOG_ADD(YLOG_DEBUG, "Database closed.");
 }
 
 /* Open a transaction. */
