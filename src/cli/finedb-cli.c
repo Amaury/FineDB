@@ -277,6 +277,7 @@ void command_del(cli_t *cli, char *pt) {
 	rc = finedb_del(cli->finedb, bkey);
 	if (rc)
 		printf_color("red", "Unable to delete key '%s'.\n", key);
+	printf_decorated("faint", "OK\n");
 }
 
 /* Put, add or update a key/value in database. */
@@ -341,6 +342,7 @@ void command_send_data(cli_t *cli, char *pt, ybool_t create_only, ybool_t update
 	if (rc)
 		printf_color("red", "Unable to %s key '%s'.\n",
 		             (create_only ? "add" : (update_only ? "update" : "put")), key);
+	printf_decorated("faint", "OK\n");
 }
 
 /* Increment a value. */
