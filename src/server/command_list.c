@@ -19,7 +19,7 @@ yerr_t command_list(tcp_thread_t *thread, ydynabin_t *buff) {
 
 	YLOG_ADD(YLOG_DEBUG, "LIST command");
 	// send the response to the client
-	result = CONNECTION_SEND_OK(thread->fd);
+	result = CONNECTION_SEND_OK(thread);
 	if (result != YENOERR)
 		goto error;
 	// send data
@@ -32,7 +32,7 @@ yerr_t command_list(tcp_thread_t *thread, ydynabin_t *buff) {
 	return (result);
 error:
 	YLOG_ADD(YLOG_WARN, "LIST error");
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_SERVER);
 	return (YEIO);
 }
 

@@ -17,14 +17,14 @@ yerr_t command_setdb(tcp_thread_t *thread, ydynabin_t *buff) {
 
 	YLOG_ADD(YLOG_DEBUG, "SETDB command");
 	// read dbname length
-	if (connection_read_data(thread->fd, buff, sizeof(dbname_len)) != YENOERR)
+	if (connection_read_data(thread, buff, sizeof(dbname_len)) != YENOERR)
 		goto error;
 	pdbname_len = ydynabin_forward(buff, sizeof(dbname_len));
 	dbname_len = *pdbname_len;
 	YFREE(thread->dbname);
 	if (dbname_len > 0) {
 		// read dbname
-		if (connection_read_data(thread->fd, buff, (size_t)dbname_len) != YENOERR)
+		if (connection_read_data(thread, buff, (size_t)dbname_len) != YENOERR)
 			goto error;
 		ptr = ydynabin_forward(buff, (size_t)dbname_len);
 		if ((dbname = YMALLOC((size_t)dbname_len + 1)) == NULL)
@@ -34,10 +34,10 @@ yerr_t command_setdb(tcp_thread_t *thread, ydynabin_t *buff) {
 	}
 	// send the response to the client
 	YLOG_ADD(YLOG_DEBUG, "SETDB command OK");
-	CONNECTION_SEND_OK(thread->fd);
+	CONNECTION_SEND_OK(thread);
 	return (result);
 error:
 	YLOG_ADD(YLOG_WARN, "SETDB error");
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_SERVER);
 	return (YEIO);
 }

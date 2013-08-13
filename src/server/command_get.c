@@ -18,12 +18,12 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 
 	YLOG_ADD(YLOG_DEBUG, "GET command");
 	// read name length
-	if (connection_read_data(thread->fd, buff, sizeof(name_len)) != YENOERR)
+	if (connection_read_data(thread, buff, sizeof(name_len)) != YENOERR)
 		goto error;
 	pname_len = ydynabin_forward(buff, sizeof(name_len));
 	name_len = ntohs(*pname_len);
 	// read name
-	if (connection_read_data(thread->fd, buff, (size_t)name_len) != YENOERR)
+	if (connection_read_data(thread, buff, (size_t)name_len) != YENOERR)
 		goto error;
 	ptr = ydynabin_forward(buff, (size_t)name_len);
 	if ((name = YMALLOC((size_t)name_len)) == NULL)
@@ -56,17 +56,17 @@ yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
 	// send the response to the client
 	YLOG_ADD(YLOG_DEBUG, "GET command OK");
 	YFREE(name);
-	result = connection_send_response(thread->fd, RESP_OK, serialized, compress,
+	result = connection_send_response(thread, RESP_OK, serialized, compress,
 	                                  bin_data.data, bin_data.len);
 	return (result);
 no_data:
 	YLOG_ADD(YLOG_DEBUG, "GET no data");
 	YFREE(name);
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_BAD_NAME);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_BAD_NAME);
 	return (YENOERR);
 error:
 	YLOG_ADD(YLOG_WARN, "GET error");
 	YFREE(name);
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_SERVER);
 	return (YEIO);
 }

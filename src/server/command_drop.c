@@ -19,7 +19,7 @@ yerr_t command_drop(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 		goto error;
 	// not synchronized: immediate response
 	if (!sync)
-		CONNECTION_SEND_OK(thread->fd);
+		CONNECTION_SEND_OK(thread);
 
 	// creation of the message
 	if ((msg = YMALLOC(sizeof(writer_msg_t))) == NULL)
@@ -43,11 +43,11 @@ yerr_t command_drop(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 		answer = 0;
 	}
 	YLOG_ADD(YLOG_DEBUG, "DROP command %s", (answer ? "OK" : "failed"));
-	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
+	return (connection_send_response(thread, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
 	                                 YFALSE, YFALSE, NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "DROP error");
 	YFREE(msg);
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_SERVER);
 	return (YEIO);
 }

@@ -20,6 +20,8 @@
 #define DEFAULT_PORT		11138
 /** @const DEFAULT_MAPSIZE Default map size (10 MB). */
 #define DEFAULT_MAPSIZE		10485760
+/** @const DEFAULT_TIMEOUT Default connection timeout (30 seconds). */
+#define DEFAULT_TIMEOUT		30
 
 /** @const ENDPOINT_THREADS_SOCKET Threads' connection endpoint. */
 #define ENDPOINT_THREADS_SOCKET	"inproc://threads_socket"
@@ -34,6 +36,7 @@
  * @field	threads_socket	Nanomsg socket for threads communication.
  * @field	writer_tid	ID of the writer thread.
  * @field	tcp_threads	List of connection threads.
+ * @field	timeout		Time before a connection should be ended.
  */
 typedef struct finedb_s {
 	ybool_t run;
@@ -42,6 +45,7 @@ typedef struct finedb_s {
 	int threads_socket;
 	pthread_t writer_tid;
 	yvect_t tcp_threads;
+	unsigned short timeout;
 } finedb_t;
 
 /**
@@ -51,11 +55,12 @@ typedef struct finedb_s {
  * @param	nbr_threads	Number of connection threads.
  * @param	mapsize		Maximum size of the database.
  * @param	nbr_dbs		Maximum number of opened databases.
+ * @param	timeout		Time before a connection should be ended.
  * @return	A pointer to the allocated structure.
  */
 finedb_t *finedb_init(char *db_path, unsigned short port,
                       unsigned short nbr_threads, size_t mapsize,
-                      unsigned int nbr_dbs);
+                      unsigned int nbr_dbs, unsigned short timeout);
 
 /**
  * Starts a finedb run.

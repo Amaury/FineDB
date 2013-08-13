@@ -12,7 +12,7 @@
 /* Initialize a finedb structure. */
 finedb_t *finedb_init(char *db_path, unsigned short port,
                       unsigned short nbr_threads, size_t mapsize,
-                      unsigned int nbr_dbs) {
+                      unsigned int nbr_dbs, unsigned short timeout) {
 	finedb_t *finedb = NULL;
 	unsigned short i;
 
@@ -24,6 +24,7 @@ finedb_t *finedb_init(char *db_path, unsigned short port,
 	finedb->threads_socket = -1;
 	//finedb->writer_tid = 0;
 	finedb->tcp_threads = yv_create(YVECT_SIZE_MEDIUM);
+	finedb->timeout = timeout;
 
 	// path management
 	if (db_path == NULL) {
@@ -44,7 +45,7 @@ finedb_t *finedb_init(char *db_path, unsigned short port,
 		database_close(finedb->database);
 		exit(2);
 	}
-	// create writer thread
+	// create the writer thread
 	if (pthread_create(&finedb->writer_tid, NULL, writer_loop, finedb)) {
 		YLOG_ADD(YLOG_ERR, "Unable to create writer thread.");
 		database_close(finedb->database);

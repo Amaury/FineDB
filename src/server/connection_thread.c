@@ -23,9 +23,11 @@
 tcp_thread_t *connection_thread_new(finedb_t *finedb) {
 	tcp_thread_t *thread;
 
+	// thread init
 	thread = YMALLOC(sizeof(tcp_thread_t));
 	thread->fd = -1;
 	thread->finedb = finedb;
+	// thread creation
 	if (pthread_create(&(thread->tid), 0, connection_thread_execution,
 	    thread)) {
 		YLOG_ADD(YLOG_WARN, "Unable to create thread.");
@@ -34,6 +36,19 @@ tcp_thread_t *connection_thread_new(finedb_t *finedb) {
 	}
 	pthread_detach(thread->tid);
 	return (thread);
+}
+
+/* Disconnect a running connection and reset the thread. */
+void connection_thread_disconnect(tcp_thread_t *thread) {
+	if (thread->fd == -1)
+		return;
+	if (thread->transaction) {
+		database_transaction_rollback(thread->transaction);
+		thread->transaction = NULL;
+	}
+	shutdown(thread->fd, SHUT_RDWR);
+	thread->fd = -1;
+	YFREE(thread->dbname);
 }
 
 /* Add a connection socket in the feed of waiting connections. */
@@ -71,6 +86,7 @@ void *connection_thread_execution(void *param) {
 		    thread->fd < 0)
 			continue;
 		YLOG_ADD(YLOG_DEBUG, "Process an incoming connection.");
+		// create a dynamic buffer
 		buff = ydynabin_new(NULL, 0, YFALSE);
 		// loop on incoming requests
 		for (; ; ) {
@@ -78,7 +94,7 @@ void *connection_thread_execution(void *param) {
 			ybool_t sync, compress, serialized;
 
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
-			if (connection_read_data(thread->fd, buff, 1) != YENOERR) {
+			if (connection_read_data(thread, buff, 1) != YENOERR) {
 				YLOG_ADD(YLOG_DEBUG, "The socket was closed.");
 				goto end_of_connection;
 			}
@@ -160,39 +176,51 @@ void *connection_thread_execution(void *param) {
 				break;
 			default:
 				YLOG_ADD(YLOG_DEBUG, "Bad command '%x'", REQUEST_COMMAND(*command));
-				CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_PROTOCOL);
+				CONNECTION_SEND_ERROR(thread, RESP_ERR_PROTOCOL);
 				goto end_of_connection;
 			}
 		}
 end_of_connection:
 		YLOG_ADD(YLOG_DEBUG, "End of connection.");
-		if (thread->transaction) {
-			database_transaction_rollback(thread->transaction);
-			thread->transaction = NULL;
-		}
-		close(thread->fd);
-		YFREE(thread->dbname);
+		connection_thread_disconnect(thread);
 		ydynabin_delete(buff);
 	}
 	pthread_exit(NULL);
 }
 
 /* Fill a dynamic buffer. */
-yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size) {
+yerr_t connection_read_data(tcp_thread_t *thread, ydynabin_t *container, size_t size) {
 	char buff[8196];
 	ssize_t bufsz;
 	yerr_t dynaerr;
 
+	if (thread->fd < 0)
+		return (YECONNRESET);
 	if (container->len >= size)
 		return (YENOERR);
 	while (container->len < size) {
-		if ((bufsz = read(fd, buff, 8196)) < 0)
+		// define timeout on the socket
+		struct timeval tv;
+		tv.tv_sec = thread->finedb->timeout;
+		tv.tv_usec = 0;
+		if (setsockopt(thread->fd, SOL_SOCKET, SO_RCVTIMEO, (void*)&tv, sizeof(tv)) < 0)
+			YLOG_ADD(YLOG_WARN, "Unable to set RCVTIMEO on socket.");
+		// try to read from socket
+		if ((bufsz = recv(thread->fd, buff, 8196, 0)) < 0) {
+			YLOG_ADD(YLOG_DEBUG, "Socket error");
 			return (YEACCESS);
+		}
 		if (bufsz == 0) {
+			YLOG_ADD(YLOG_DEBUG, "Socket closed");
 			if (container->len < size)
 				return (YECONNRESET);
 			break;
 		}
+		// remove timeout from the socket
+		tv.tv_sec = 0;
+		if (setsockopt(thread->fd, SOL_SOCKET, SO_RCVTIMEO, (void*)&tv, sizeof(tv)) < 0)
+			YLOG_ADD(YLOG_WARN, "Unable to remove RCVTIMEO from socket.");
+		// expand the buffer
 		if ((dynaerr = ydynabin_expand(container, buff, (size_t)bufsz)) != YENOERR)
 			return (dynaerr);
 	}
@@ -200,13 +228,15 @@ yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size) {
 }
 
 /* Send a response. */
-yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serialized,
-                                ybool_t compressed, const void *data, size_t data_len) {
+yerr_t connection_send_response(tcp_thread_t *thread, protocol_response_t code,
+                                ybool_t serialized, ybool_t compressed,
+                                const void *data, size_t data_len) {
 	unsigned char code_byte;
 	struct iovec iov[3];
 	struct msghdr mh;
 	ssize_t expected = 1, rc;
 	uint32_t data_nlen;
+	struct timeval tv;
 
 	YLOG_ADD(YLOG_DEBUG, "Send response (%d).", code);
 	mh.msg_name = NULL;
@@ -234,7 +264,13 @@ yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serial
 		mh.msg_iovlen = 3;
 		expected += sizeof(unsigned int) + data_len;
 	}
-	rc = sendmsg(fd, &mh, 0);
+	// define timeout on the socket
+	tv.tv_sec = thread->finedb->timeout;
+	tv.tv_usec = 0;
+	if (setsockopt(thread->fd, SOL_SOCKET, SO_SNDTIMEO, (void*)&tv, sizeof(tv)) < 0)
+		YLOG_ADD(YLOG_WARN, "Unable to set SNDTIMEO on socket.");
+	// send the message
+	rc = sendmsg(thread->fd, &mh, 0);
 	if (rc < 0) {
 		YLOG_ADD(YLOG_WARN, "Unable to send response.");
 		return (YEIO);
@@ -245,7 +281,11 @@ yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serial
 		YLOG_ADD(YLOG_WARN, "Too much data were sent (%d / %d).", rc, expected);
 		return (YEIO);
 	}
+	// remove timeout from the socket
+	tv.tv_sec = 0;
+	if (setsockopt(thread->fd, SOL_SOCKET, SO_SNDTIMEO, (void*)&tv, sizeof(tv)) < 0)
+		YLOG_ADD(YLOG_WARN, "Unable to remove SNDTIMEO from socket.");
+	// return
 	YLOG_ADD(YLOG_DEBUG, "Sent %d bytes '%s'.", rc, data);
 	return (YENOERR);
 }
-

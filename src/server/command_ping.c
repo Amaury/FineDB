@@ -11,5 +11,5 @@
 /* Process a PING command. */
 yerr_t command_ping(tcp_thread_t *thread) {
 	YLOG_ADD(YLOG_DEBUG, "PING command");
-	return (CONNECTION_SEND_OK(thread->fd));
+	return (CONNECTION_SEND_OK(thread));
 }

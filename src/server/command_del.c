@@ -16,12 +16,12 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 
 	YLOG_ADD(YLOG_DEBUG, "DEL command");
 	// read key length
-	if (connection_read_data(thread->fd, buff, sizeof(key_len)) != YENOERR)
+	if (connection_read_data(thread, buff, sizeof(key_len)) != YENOERR)
 		goto error;
 	pkey_len = ydynabin_forward(buff, sizeof(key_len));
 	key_len = ntohs(*pkey_len);
 	// read key
-	if (connection_read_data(thread->fd, buff, (size_t)key_len) != YENOERR)
+	if (connection_read_data(thread, buff, (size_t)key_len) != YENOERR)
 		goto error;
 	ptr = ydynabin_forward(buff, (size_t)key_len);
 	if ((key = YMALLOC((size_t)key_len)) == NULL)
@@ -30,7 +30,7 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 
 	if (!sync) {
 		// send the response
-		connection_send_response(thread->fd, RESP_OK, YFALSE, YFALSE, NULL, 0);
+		connection_send_response(thread, RESP_OK, YFALSE, YFALSE, NULL, 0);
 	}
 
 	// creation of the message
@@ -60,12 +60,12 @@ yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
 	YLOG_ADD(YLOG_DEBUG, "DEL command %s", (answer ? "OK" : "failed"));
 	if (!sync)
 		return (YENOERR);
-	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
+	return (connection_send_response(thread, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
 	                                 YFALSE, YFALSE, NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "PUT error");
 	YFREE(key);
 	YFREE(msg);
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_SERVER);
 	return (YEIO);
 }

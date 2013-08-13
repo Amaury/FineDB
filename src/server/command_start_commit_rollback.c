@@ -13,11 +13,11 @@ yerr_t command_start(tcp_thread_t *thread) {
 	thread->transaction = database_transaction_start(thread->finedb->database, YFALSE);
 	if (thread->transaction == NULL)
 		goto error;
-	CONNECTION_SEND_OK(thread->fd);
+	CONNECTION_SEND_OK(thread);
 	return (YENOERR);
 error:
 	YLOG_ADD(YLOG_WARN, "START error");
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_TRANSACTION);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_TRANSACTION);
 	return (YEACCESS);
 }
 
@@ -31,11 +31,11 @@ yerr_t command_commit(tcp_thread_t *thread) {
 	if (database_transaction_commit(thread->transaction) != YENOERR)
 		goto error;
 	thread->transaction = NULL;
-	CONNECTION_SEND_OK(thread->fd);
+	CONNECTION_SEND_OK(thread);
 	return (YENOERR);
 error:
 	YLOG_ADD(YLOG_WARN, "COMMIT error");
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_TRANSACTION);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_TRANSACTION);
 	return (YEACCESS);
 }
 
@@ -48,10 +48,10 @@ yerr_t command_rollback(tcp_thread_t *thread) {
 	// rollback transaction
 	database_transaction_rollback(thread->transaction);
 	thread->transaction = NULL;
-	CONNECTION_SEND_OK(thread->fd);
+	CONNECTION_SEND_OK(thread);
 	return (YENOERR);
 error:
 	YLOG_ADD(YLOG_WARN, "ROLLBACK error");
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_TRANSACTION);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_TRANSACTION);
 	return (YEACCESS);
 }

@@ -24,12 +24,12 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t
 	if (update_only)
 		sync = YTRUE;
 	// read name length
-	if (connection_read_data(thread->fd, buff, sizeof(name_len)) != YENOERR)
+	if (connection_read_data(thread, buff, sizeof(name_len)) != YENOERR)
 		goto error;
 	pname_len = ydynabin_forward(buff, sizeof(name_len));
 	name_len = ntohs(*pname_len);
 	// read name
-	if (connection_read_data(thread->fd, buff, (size_t)name_len) != YENOERR)
+	if (connection_read_data(thread, buff, (size_t)name_len) != YENOERR)
 		goto error;
 	ptr = ydynabin_forward(buff, (size_t)name_len);
 	if ((name = YMALLOC((size_t)name_len)) == NULL)
@@ -37,13 +37,13 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t
 	memcpy(name, ptr, (size_t)name_len);
 	YLOG_ADD(YLOG_DEBUG, "NAME : '%s'.", name);
 	// read data length
-	if (connection_read_data(thread->fd, buff, sizeof(data_len)) != YENOERR)
+	if (connection_read_data(thread, buff, sizeof(data_len)) != YENOERR)
 		goto error;
 	pdata_len = ydynabin_forward(buff, sizeof(data_len));
 	data_len = ntohl(*pdata_len);
 	// read data
 	if (data_len > 0) {
-		if (connection_read_data(thread->fd, buff, (size_t)data_len) != YENOERR)
+		if (connection_read_data(thread, buff, (size_t)data_len) != YENOERR)
 			goto error;
 		ptr = ydynabin_forward(buff, (size_t)data_len);
 		if ((data = YMALLOC((size_t)data_len)) == NULL)
@@ -54,7 +54,7 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t
 
 	// not synchronized: immediate response
 	if (!sync && !update_only)
-		CONNECTION_SEND_OK(thread->fd);
+		CONNECTION_SEND_OK(thread);
 
 	// creation of the message
 	if ((msg = YMALLOC(sizeof(writer_msg_t))) == NULL)
@@ -134,13 +134,13 @@ yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t
 	}
 end_of_process:
 	YLOG_ADD(YLOG_DEBUG, "PUT command %s", (answer ? "OK" : "failed"));
-	return (connection_send_response(thread->fd, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
+	return (connection_send_response(thread, (answer ? RESP_OK : RESP_ERR_BAD_NAME),
 	                                 YFALSE, YFALSE, NULL, 0));
 error:
 	YLOG_ADD(YLOG_WARN, "PUT error");
 	YFREE(name);
 	YFREE(data);
 	YFREE(msg);
-	CONNECTION_SEND_ERROR(thread->fd, RESP_ERR_SERVER);
+	CONNECTION_SEND_ERROR(thread, RESP_ERR_SERVER);
 	return (YEIO);
 }

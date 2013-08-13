@@ -2,6 +2,7 @@
 #define __CONNECTION_THREAD_H__
 
 #include <pthread.h>
+#include <time.h>
 #include "ydefs.h"
 #include "yerror.h"
 #include "ydynabin.h"
@@ -44,10 +45,10 @@ typedef enum tcp_state_e {
 } tcp_state_t;
 
 /** @define CONNECTION_SEND_OK Send a simple OK response to the client. */
-#define CONNECTION_SEND_OK(fd)	connection_send_response(fd, RESP_OK, YFALSE, YFALSE, NULL, 0)
+#define CONNECTION_SEND_OK(thread)	connection_send_response(thread, RESP_OK, YFALSE, YFALSE, NULL, 0)
 
 /** @define CONNECTION_SEND_ERROR Send an error response to the client. */
-#define CONNECTION_SEND_ERROR(fd, err)	connection_send_response(fd, err, YFALSE, YFALSE, NULL, 0)
+#define CONNECTION_SEND_ERROR(thread, err)	connection_send_response(thread, err, YFALSE, YFALSE, NULL, 0)
 
 /**
  * @function	connection_thread_new
@@ -56,6 +57,13 @@ typedef enum tcp_state_e {
  * @return	Pointer to the connection thread structure.
  */
 tcp_thread_t *connection_thread_new(finedb_t *finedb);
+
+/**
+ * @function	connection_thread_disconnect
+ *		Disconnect a running connection and reset the thread.
+ * @param	thread	Pointer to the thread structure.
+ */
+void connection_thread_disconnect(tcp_thread_t *thread);
 
 /**
  * @function	connection_thread_push_socket
@@ -78,17 +86,17 @@ void *connection_thread_execution(void *param);
  * @function	connection_read_data
  *		Ensures that a dynamic binary buffer contains the given number
  *		of characters. If not, the needed data is read from socket.
- * @param	fd		Socket descriptor.
+ * @param	thread		Pointer to the thread structure.
  * @param	container	Pointer to ydynabin_t structure.
  * @param	size		Minimal size of the buffer.
  * @return	YENOERR if OK.
  */
-yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size);
+yerr_t connection_read_data(tcp_thread_t *thread, ydynabin_t *container, size_t size);
 
 /**
  * @function	connection_send_response
  *		Send a response to the client.
- * @param	fd		Socket descriptor.
+ * @param	thread		Pointer to the thread structure.
  * @param	code		Response code.
  * @param	serialized	YTRUE if the data is serialized.
  * @param	compressed	YTRUE if the data is compressed.
@@ -96,7 +104,8 @@ yerr_t connection_read_data(int fd, ydynabin_t *container, size_t size);
  * @param	data_len	Date size. Unused if data is NULL.
  * @return	YENOERR if OK.
  */
-yerr_t connection_send_response(int fd, protocol_response_t code, ybool_t serialized,
-                                ybool_t compressed, const void *data, size_t data_len);
+yerr_t connection_send_response(tcp_thread_t *thread, protocol_response_t code,
+                                ybool_t serialized, ybool_t compressed,
+                                const void *data, size_t data_len);
 
 #endif /* __CONNECTION_THREAD_H__ */
