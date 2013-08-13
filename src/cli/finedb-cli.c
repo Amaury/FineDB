@@ -18,11 +18,13 @@
  * @field	finedb		Pointer to the client structure.
  * @field	dbname		Name of the current database.
  * @field	in_transaction	YTRUE if a transaction is opened.
+ * @field	autocheck	YTRUE to check the connection before every request.
  */
 typedef struct cli_s {
 	finedb_client_t *finedb;
 	char *dbname;
 	ybool_t in_transaction;
+	ybool_t autocheck;
 } cli_t;
 
 /** @define DEFAULT_HOST Default hostname of the server. */
@@ -31,7 +33,7 @@ typedef struct cli_s {
 /** @define LTRIM Move forward a pointer to skip spaces. */
 #define LTRIM(pt)	while(*pt && IS_SPACE(*pt)) ++pt;
 
-// function declarations
+/* *** function declarations *** */
 void printf_decorated(const char *type, char *s, ...);
 void printf_color(const char *color, char *s, ...);
 void print_response(char c);
@@ -49,18 +51,27 @@ void command_rollback(cli_t *cli);
 void command_list(cli_t *cli, char *pt);
 void command_drop(cli_t *cli, char *pt);
 #endif
+void command_ping(cli_t *cli);
 void command_sync(cli_t *cli);
 void command_async(cli_t *cli);
+void command_autocheck(cli_t *cli, char *pt);
+int check_connection(cli_t *cli);
 
+/* Main function. */
 int main(int argc, char *argv[]) {
 	cli_t cli;
 	char buff[8196], *hostname = DEFAULT_HOST;
 	size_t bufsz;
 
 	bzero(&cli, sizeof(cli_t));
+	cli.autocheck = YTRUE;
 	if (argc == 2)
 		hostname = argv[1];
-	if ((cli.finedb = finedb_connect(hostname, 11138)) == NULL) {
+	if ((cli.finedb = finedb_create(hostname, 11138)) == NULL) {
+		printf_color("red", "Memory error.");
+		exit(1);
+	}
+	if (finedb_connect(cli.finedb) != FINEDB_OK) {
 		printf_color("red", "Unable to connect to server '%s' on port '%d'.\n", argv[1], 11138);
 		exit(2);
 	}
@@ -82,14 +93,24 @@ int main(int argc, char *argv[]) {
 			++pt;
 		*pt++ = '\0';
 		LTRIM(pt);
-		// command management
+		/* command management */
 		if (cmd[0] == '\0')
 			continue;
+		// local commands, no need for a running connection
 		if (!strcasecmp(cmd, "exit") || !strcasecmp(cmd, "quit"))
 			exit(0);
-		if (!strcasecmp(cmd, "help") || cmd[0] == '?')
+		if (!strcasecmp(cmd, "help") || cmd[0] == '?') {
 			command_help();
-		else if (!strcasecmp(cmd, "use"))
+			continue;
+		} else if (!strcasecmp(cmd, "sync")) {
+			command_sync(&cli);
+			continue;
+		} else if (!strcasecmp(cmd, "async")) {
+			command_async(&cli);
+			continue;
+		}
+		// commands that need a running connection
+		if (!strcasecmp(cmd, "use"))
 			command_use(&cli, pt);
 		else if (!strcasecmp(cmd, "get"))
 			command_get(&cli, pt);
@@ -115,10 +136,10 @@ int main(int argc, char *argv[]) {
 		else if (!strcasecmp(cmd, "list"))
 			command_list(&cli, pt);
 #endif
-		else if (!strcasecmp(cmd, "sync"))
-			command_sync(&cli);
-		else if (!strcasecmp(cmd, "async"))
-			command_async(&cli);
+		else if (!strcasecmp(cmd, "ping"))
+			command_ping(&cli);
+		else if (!strcasecmp(cmd, "autocheck"))
+			command_autocheck(&cli, pt);
 		else
 			printf_color("red", "Bad command.\n");
 	}
@@ -127,13 +148,21 @@ int main(int argc, char *argv[]) {
 
 /* Show usage. */
 void command_help() {
-	printf_decorated("faint", "Usage:    finedb-cli hostname\n"
+	printf_decorated("faint", "Usage:    finedb-cli [hostname]\n"
 	                          "Commands:\n"
-	                          "    put \"key\" \"data\"\n"
 	                          "    get \"key1\"\n"
-	                          "    del \"key1\"\n"
+	                          "    put \"key\" \"data\"\n"
+	                          "    add \"key\" \"data\"\n"
+	                          "    update \"key\" \"data\"\n"
+	                          "    del \"key\"\n"
+	                          "    use \"dbname\"\n"
+	                          "    start\n"
+	                          "    commit\n"
+	                          "    rollback\n"
+	                          "    ping\n"
 	                          "    sync\n"
 	                          "    async\n"
+	                          "    autocheck [on|off]\n"
 	                          "    quit\n");
 }
 
@@ -141,7 +170,10 @@ void command_help() {
 void command_use(cli_t *cli, char *pt) {
 	int rc;
 
-	cli->finedb->debug = YTRUE;
+	// check connection if needed
+	if (!check_connection(cli))
+		return;
+	// request
 	if (!strlen(pt) || !strcasecmp(pt, "default")) {
 		// use default database
 		if ((rc = finedb_setdb(cli->finedb, NULL)) != 0)
@@ -197,6 +229,9 @@ void command_get(cli_t *cli, char *pt) {
 	}
 	*pt2 = '\0';
 
+	// check connection if needed
+	if (!check_connection(cli))
+		return;
 	// request
 	bzero(&bdata, sizeof(bdata));
 	ybin_set(&bkey, key, strlen(key));
@@ -234,6 +269,9 @@ void command_del(cli_t *cli, char *pt) {
 	}
 	*pt2 = '\0';
 
+	// check connection if needed
+	if (!check_connection(cli))
+		return;
 	// request
 	ybin_set(&bkey, key, strlen(key));
 	rc = finedb_del(cli->finedb, bkey);
@@ -288,6 +326,9 @@ void command_send_data(cli_t *cli, char *pt, ybool_t create_only, ybool_t update
 	}
 	*pt2 = '\0';
 
+	// check connection if needed
+	if (!check_connection(cli))
+		return;
 	// request
 	ybin_set(&bkey, key, strlen(key));
 	ybin_set(&bdata, data, strlen(data));
@@ -314,9 +355,14 @@ void command_dec(cli_t *cli, char *pt) {
 void command_start(cli_t *cli) {
 	int rc;
 
+	// check connection if needed
+	if (!check_connection(cli))
+		return;
+	// check opened transaction
 	if (cli->in_transaction) {
 		printf_color("red", "A transaction is already open. It will be rollbacked.\n");
 	}
+	// request
 	rc = finedb_start(cli->finedb);
 	if (rc) {
 		printf_color("red", "Server error.\n");
@@ -330,10 +376,15 @@ void command_start(cli_t *cli) {
 void command_commit(cli_t *cli) {
 	int rc;
 
+	// check connection if needed
+	if (!check_connection(cli))
+		return;
+	// check opened transaction
 	if (!cli->in_transaction) {
 		printf_color("red", "No opened transaction.\n");
 		return;
 	}
+	// request
 	rc = finedb_commit(cli->finedb);
 	if (rc) {
 		printf_color("red", "Server error.\n");
@@ -347,10 +398,15 @@ void command_commit(cli_t *cli) {
 void command_rollback(cli_t *cli) {
 	int rc;
 
+	// check connection if needed
+	if (!check_connection(cli))
+		return;
+	// check opened transaction
 	if (!cli->in_transaction) {
 		printf_color("red", "No opened transaction.\n");
 		return;
 	}
+	// request
 	rc = finedb_rollback(cli->finedb);
 	if (rc) {
 		printf_color("red", "Server error.\n");
@@ -358,6 +414,60 @@ void command_rollback(cli_t *cli) {
 	}
 	printf_decorated("faint", "Transaction aborted.\n");
 	cli->in_transaction = YFALSE;
+}
+
+/* Test a connection. */
+void command_ping(cli_t *cli) {
+	int rc;
+
+	// check connection if needed
+	if (!check_connection(cli))
+		return;
+	// request
+	rc = finedb_ping(cli->finedb);
+	if (rc) {
+		printf_color("red", "Server error.\n");
+		return;
+	}
+	printf_decorated("faint", "OK\n");
+}
+
+/* Set the autocheck option. */
+void command_autocheck(cli_t *cli, char *pt) {
+	if (strlen(pt)) {
+		if (!strcasecmp(pt, "on") || !strcasecmp(pt, "yes") ||
+		    !strcasecmp(pt, "true") || !strcmp(pt, "1"))
+			cli->autocheck = YTRUE;
+		else
+			cli->autocheck = YFALSE;
+	}
+	printf_decorated("faint", "autocheck option is %s\n",
+	                 cli->autocheck ? "activated" : "deactivated");
+}
+
+/**
+ * @function	check_connection
+ * Check the connection to the server.
+ * @param	cli	Pointer to the client structure.
+ * @return	1 if OK, 0 if no connection.
+ */
+int check_connection(cli_t *cli) {
+	if (!cli->autocheck)
+		return (1);
+	// ping the server
+	if (!finedb_ping(cli->finedb))
+		return (1);
+	// no connection, try to reconnect
+	if (finedb_connect(cli->finedb) != FINEDB_OK) {
+		printf_color("red", "Lost connection to server.\n");
+		return (0);
+	}
+	if (cli->in_transaction) {
+		printf_decorated("faint", "Reconnected to server. Transaction is lost.\n");
+		cli->in_transaction = YFALSE;
+	} else
+		printf_decorated("faint", "Reconnected to server.\n");
+	return (1);
 }
 
 #if 0
