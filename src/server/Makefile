@@ -18,7 +18,8 @@ SRC	=	main.c				\
 		command_put.c			\
 		command_list.c			\
 		command_drop.c			\
-		command_start_commit_rollback.c
+		command_start_commit_rollback.c	\
+		command_ping.c
 
 # ###################################################################
 

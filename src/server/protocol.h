@@ -68,6 +68,7 @@
  * @constant	PROTO_ROLLBACK	ROLLBACK command.
  * @constant	PROTO_LIST	LIST command.
  * @constant	PROTO_DROP	DROP command.
+ * @constant	PROTO_PING	PING command.
  */
 typedef enum protocol_command_e {
 	PROTO_SETDB	= 0x0,
@@ -82,7 +83,8 @@ typedef enum protocol_command_e {
 	PROTO_COMMIT	= 0x9,
 	PROTO_ROLLBACK	= 0xa,
 	PROTO_LIST	= 0xb,
-	PROTO_DROP	= 0xc
+	PROTO_DROP	= 0xc,
+	PROTO_PING	= 0xd
 } protocol_command_t;
 
 /**

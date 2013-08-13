@@ -17,6 +17,7 @@
 #include "command_list.h"
 #include "command_drop.h"
 #include "command_start_commit_rollback.h"
+#include "command_ping.h"
 
 /* Create a new connection thread. */
 tcp_thread_t *connection_thread_new(finedb_t *finedb) {
@@ -150,6 +151,11 @@ void *connection_thread_execution(void *param) {
 			case PROTO_DROP:
 				YLOG_ADD(YLOG_DEBUG, "DROP command");
 				if (command_drop(thread, sync, buff) != YENOERR)
+					goto end_of_connection;
+				break;
+			case PROTO_PING:
+				YLOG_ADD(YLOG_DEBUG, "PING command");
+				if (command_ping(thread) != YENOERR)
 					goto end_of_connection;
 				break;
 			default:
