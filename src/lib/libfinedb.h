@@ -5,26 +5,64 @@
 #include "ybin.h"
 
 /**
+ * @typedef	finedb_result_t
+ * Return values of FineDB client library functions.
+ * @const	FINEDB_OK		The request was executed correctly.
+ * @const	FINEDB_ERR_NETWORK	Network error.
+ * @const	FINEDB_ERR_SERVER	Server error.
+ * @const	FINEDB_ERR_FILE		File exists or doesn't exist.
+ * @const	FINEDB_ERR_MEMORY	Unable to allocate memory.
+ * @const	FINEDB_ERR_ZIP		Compression/decompression error.
+ */
+typedef enum finedb_result_e {
+	FINEDB_OK = 0,
+	FINEDB_ERR_NETWORK = 1,
+	FINEDB_ERR_SERVER = 2,
+	FINEDB_ERR_FILE = 3,
+	FINEDB_ERR_MEMORY = 4,
+	FINEDB_ERR_ZIP = 5
+} finedb_result_t;
+
+/**
  * @typedef	finedb_clien_t
  * Structure used by the client to connect to a FineDB server.
- * @field	sock	Connection socket.
- * @field	sync	YTRUE for synchronous mode.
- * @field	debug	YTRUE for debug mode.
+ * @field	hostname	Server hostname.
+ * @field	port		Port number.
+ * @field	sock		Connection socket.
+ * @field	sync		YTRUE for synchronous mode.
+ * @field	debug		YTRUE for debug mode.
  */
 typedef struct finedb_client_s {
-	int	sock;
+	char *hostname;
+	unsigned short port;
+	int sock;
 	ybool_t sync;
-	ybool_t	debug;
+	ybool_t debug;
 } finedb_client_t;
 
 /**
- * @function	finedb_connect
- * Connect to a FineDB server.
+ * @function	finedb_create
+ * Create a FineDB connection client.
  * @param	hostname	Hostname.
  * @param	port		Port number.
  * @return	A pointer to an allocated client structure.
  */
-finedb_client_t *finedb_connect(char *hostname, unsigned short port);
+finedb_client_t *finedb_create(const char *hostname, unsigned short port);
+
+/**
+ * @function	finedb_delete
+ * @Destroy a FineDB connection client.
+ * @param	client	Pointer to the client structure.
+ */
+void finedb_delete(finedb_client_t *client);
+
+/**
+ * @function	finedb_connect
+ * Connect to the configured server.
+ * @param	client	Pointer to the client structure.
+ * @return	FINEDB_OK if OK.
+ */
+int finedb_connect(finedb_client_t *client);
 
 /**
  * @function	finedb_disconnect
@@ -32,6 +70,14 @@ finedb_client_t *finedb_connect(char *hostname, unsigned short port);
  * @param	client	Pointer to the client structure.
  */
 void finedb_disconnect(finedb_client_t *client);
+
+/**
+ * @function	findb_reconnect
+ * Reconnect to a previously connected server.
+ * @param	client	Pointer to the client structure.
+ * @return	FINEDB_OK if OK.
+ */
+int finedb_reconnect(finedb_client_t *client);
 
 /**
  * @function	finedb_sync
@@ -52,7 +98,7 @@ void finedb_async(finedb_client_t *client);
  * Select to a different database.
  * @param	client	Pointer to the client structure.
  * @param	dbname	Name of the database, or NULL for the default database.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_setdb(finedb_client_t *client, char *dbname);
 
@@ -62,7 +108,7 @@ int finedb_setdb(finedb_client_t *client, char *dbname);
  * @param	client	Pointer to the client structure.
  * @param	key	Pointer to the key content.
  * @param	data	Pointer to the destination data.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_get(finedb_client_t *client, ybin_t key, ybin_t *data);
 
@@ -71,7 +117,7 @@ int finedb_get(finedb_client_t *client, ybin_t key, ybin_t *data);
  * Delete a value from database.
  * @param	client	Pointer to the client structure.
  * @param	key	Pointer to the key content.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_del(finedb_client_t *client, ybin_t key);
 
@@ -81,7 +127,7 @@ int finedb_del(finedb_client_t *client, ybin_t key);
  * @param	client	Pointer to the client structure.
  * @param	key	Pointer to the key content.
  * @param	data	Pointer to the data content.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_put(finedb_client_t *client, ybin_t key, ybin_t data);
 
@@ -91,7 +137,7 @@ int finedb_put(finedb_client_t *client, ybin_t key, ybin_t data);
  * @param	client	Pointer to the client structure.
  * @param	key	Pointer to the key content.
  * @param	data	Pointer to the data content.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_add(finedb_client_t *client, ybin_t key, ybin_t data);
 
@@ -101,7 +147,7 @@ int finedb_add(finedb_client_t *client, ybin_t key, ybin_t data);
  * @param	client	Pointer to the client structure.
  * @param	key	Pointer to the key content.
  * @param	data	Pointer to the data content.
- * @return	0 if OK.
+ * @return	FINEDB if OK.
  */
 int finedb_update(finedb_client_t *client, ybin_t key, ybin_t data);
 
@@ -112,7 +158,7 @@ int finedb_update(finedb_client_t *client, ybin_t key, ybin_t data);
  * @param	key		Pointer to the key content.
  * @param	increment	Increment value.
  * @param	new_value	Pointer to the new value. Could be NULL.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_inc(finedb_client_t *client, ybin_t key, int increment, int *new_value);
 
@@ -123,7 +169,7 @@ int finedb_inc(finedb_client_t *client, ybin_t key, int increment, int *new_valu
  * @param	key		Pointer to the key content.
  * @param	decrement	Decrement value.
  * @param	new_value	Pointer to the new value. Could be NULL.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_dec(finedb_client_t *client, ybin_t key, int increment, int *new_value);
 
@@ -131,7 +177,7 @@ int finedb_dec(finedb_client_t *client, ybin_t key, int increment, int *new_valu
  * @function	finedb_start
  * Start a transaction.
  * @param	client	Pointer to the client structure.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_start(finedb_client_t *client);
 
@@ -139,7 +185,7 @@ int finedb_start(finedb_client_t *client);
  * @function	finedb_commit
  * Commit a transaction.
  * @param	client	Pointer to the client structure.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_commit(finedb_client_t *client);
 
@@ -147,8 +193,16 @@ int finedb_commit(finedb_client_t *client);
  * @function	finedb_rollback
  * Rollback a transaction.
  * @param	client	Pointer to the client structure.
- * @return	0 if OK.
+ * @return	FINEDB_OK if OK.
  */
 int finedb_rollback(finedb_client_t *client);
+
+/**
+ * @function	finedb_ping
+ * Test a running connection.
+ * @param	client	Pointer to the client structure.
+ * @return	FINEDB_OK if OK.
+ */
+int finedb_ping(finedb_client_t *client);
 
 #endif /* __LIBFINEDB_H__ */
