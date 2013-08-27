@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "nanomsg/nn.h"
-#include "nanomsg/fanout.h"
+#include "nanomsg/pipeline.h"
 #include "ylog.h"
 #include "connection_thread.h"
 #include "server.h"

@@ -7,8 +7,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
-//#include "nanomsg/nn.h"
-//#include "nanomsg/fanout.h"
 #include "ydefs.h"
 #include "ylog.h"
 #include "finedb.h"
