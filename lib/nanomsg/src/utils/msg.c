@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012-2013 250bpm s.r.o.
+    Copyright (c) 2012-2013 250bpm s.r.o.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -30,7 +30,7 @@ void nn_msg_init (struct nn_msg *self, size_t size)
     nn_chunkref_init (&self->body, size);
 }
 
-void nn_msg_init_chunk (struct nn_msg *self, struct nn_chunk *chunk)
+void nn_msg_init_chunk (struct nn_msg *self, void *chunk)
 {
     nn_chunkref_init (&self->hdr, 0);
     nn_chunkref_init_chunk (&self->body, chunk);

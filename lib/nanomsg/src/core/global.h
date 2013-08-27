@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012-2013 250bpm s.r.o.
+    Copyright (c) 2012-2013 250bpm s.r.o.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -26,7 +26,7 @@
 /*  Provides access to the list of available transports. */
 struct nn_transport *nn_global_transport (int id);
 
-/*  Returns a worker. Each call to this function may return different worker. */
-struct nn_worker *nn_global_choose_worker ();
+/*  Returns the global worker thread pool. */
+struct nn_pool *nn_global_getpool ();
 
 #endif

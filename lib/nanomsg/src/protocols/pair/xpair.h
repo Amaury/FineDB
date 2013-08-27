@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012-2013 250bpm s.r.o.
+    Copyright (c) 2012-2013 250bpm s.r.o.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -27,6 +27,7 @@
 
 extern struct nn_socktype *nn_xpair_socktype;
 
-int nn_xpair_create (struct nn_sockbase **sockbase);
+int nn_xpair_create (void *hint, struct nn_sockbase **sockbase);
+int nn_xpair_ispeer (int socktype);
 
 #endif

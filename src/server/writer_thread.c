@@ -1,5 +1,5 @@
 #include "nanomsg/nn.h"
-#include "nanomsg/fanin.h"
+#include "nanomsg/pipeline.h"
 #include "lmdb.h"
 #include "ylog.h"
 #include "writer_thread.h"
@@ -12,7 +12,7 @@ void *writer_loop(void *param) {
 	int socket;
 
 	// create the nanomsg socket for threads communication
-	if ((socket = nn_socket(AF_SP, NN_SINK)) < 0 ||
+	if ((socket = nn_socket(AF_SP, NN_PULL)) < 0 ||
 	    nn_bind(socket, ENDPOINT_WRITER_SOCKET) < 0) {
 		YLOG_ADD(YLOG_CRIT, "Unable to create socket in writer thread.");
 		exit(6);

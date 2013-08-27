@@ -1,4 +1,5 @@
 *.[oa]
 *.so
+*.so.*
 nanomsg/build/
 

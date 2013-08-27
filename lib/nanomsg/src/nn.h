@@ -1,5 +1,6 @@
 /*
-    Copyright (c) 2012-2013 250bpm s.r.o.
+    Copyright (c) 2012-2013 250bpm s.r.o.  All rights reserved.
+    Copyright (c) 2013 GoPivotal, Inc.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -38,9 +39,10 @@ extern "C" {
 #       define NN_EXPORT __declspec(dllimport)
 #   endif
 #else
-#   if defined __SUNPRO_C  || defined __SUNPRO_CC
+#   if defined __SUNPRO_C
 #       define NN_EXPORT __global
-#   elif (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER
+#   elif (defined __GNUC__ && __GNUC__ >= 4) || \
+          defined __INTEL_COMPILER || defined __clang__
 #       define NN_EXPORT __attribute__ ((visibility("default")))
 #   else
 #       define NN_EXPORT
@@ -48,19 +50,22 @@ extern "C" {
 #endif
 
 /******************************************************************************/
-/*  Versioning support.                                                       */
+/*  ABI versioning support.                                                   */
 /******************************************************************************/
 
-/*  Version macros for compile-time API version detection                     */
-#define NN_VERSION_MAJOR 0
-#define NN_VERSION_MINOR 0
-#define NN_VERSION_PATCH 0
+/*  Don't change this unless you know exactly what you're doing and have      */
+/*  read and understand the following documents:                              */
+/*  www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html     */
+/*  www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html  */
 
-#define NN_MAKE_VERSION(major, minor, patch) \
-    ((major) * 10000 + (minor) * 100 + (patch))
-#define NN_VERSION \
-    NN_MAKE_VERSION(NN_VERSION_MAJOR, NN_VERSION_MINOR, NN_VERSION_PATCH)
+/*  The current interface version. */
+#define NN_VERSION_CURRENT 0
 
+/*  The latest revision of the current interface. */
+#define NN_VERSION_REVISION 0
+
+/*  How many past interface versions are still supported. */
+#define NN_VERSION_AGE 0
 
 /******************************************************************************/
 /*  Errors.                                                                   */
@@ -136,8 +141,7 @@ NN_EXPORT const char *nn_strerror (int errnum);
 /*  Returns the symbol name (e.g. "NN_REQ") and value at a specified index.   */
 /*  If the index is out-of-range, returns NULL and sets errno to EINVAL       */
 /*  General usage is to start at i=0 and iterate until NULL is returned.      */
-NN_EXPORT const char *nn_symbol (int i, int* value);
-
+NN_EXPORT const char *nn_symbol (int i, int *value);
 
 /******************************************************************************/
 /*  Helper function for shutting down multi-threaded applications.            */
@@ -183,7 +187,7 @@ NN_EXPORT struct nn_cmsghdr *nn_cmsg_nexthdr (const struct nn_msghdr *mhdr,
 
 #define NN_CMSG_FIRSTHDR(mhdr) \
     ((mhdr)->msg_controllen >= sizeof (struct nn_cmsghdr) \
-    ? (struct nn_cmsghdr*) (mhdr)->msg_control : (struct cmsghdr*) NULL)
+    ? (struct nn_cmsghdr*) (mhdr)->msg_control : (struct nn_cmsghdr*) NULL)
 
 #define NN_CMSG_NXTHDR(mhdr,cmsg) \
     nn_cmsg_nexthdr ((struct nn_msghdr*) (mhdr), (struct nn_cmsghdr*) (cmsg))
@@ -227,6 +231,7 @@ NN_EXPORT struct nn_cmsghdr *nn_cmsg_nexthdr (const struct nn_msghdr *mhdr,
 #define NN_RCVFD 11
 #define NN_DOMAIN 12
 #define NN_PROTOCOL 13
+#define NN_IPV4ONLY 14
 
 /*  Send/recv options.                                                        */
 #define NN_DONTWAIT 1

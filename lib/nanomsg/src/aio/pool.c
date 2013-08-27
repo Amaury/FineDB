@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2013 250bpm s.r.o.
+    Copyright (c) 2013 250bpm s.r.o.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -20,8 +20,6 @@
     IN THE SOFTWARE.
 */
 
-#if !defined NN_HAVE_WINDOWS
-
 #include "pool.h"
 
 /*  TODO: The dummy implementation of a thread pool. As for now there's only
@@ -41,6 +39,3 @@ struct nn_worker *nn_pool_choose_worker (struct nn_pool *self)
 {
     return &self->worker;
 }
-
-#endif
-

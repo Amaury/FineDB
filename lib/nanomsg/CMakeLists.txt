@@ -1,5 +1,6 @@
 #
-#   Copyright (c) 2012 250bpm s.r.o.
+#   Copyright (c) 2012 250bpm s.r.o.  All rights reserved.
+#   Copyright (c) 2013 GoPivotal, Inc.  All rights reserved.
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a copy
 #   of this software and associated documentation files (the "Software"),
@@ -25,7 +26,7 @@ include (CheckIncludeFiles)
 include (CheckSymbolExists)
 include (CheckCSourceCompiles)
 
-project (nanomsg)
+project (nanomsg C)
 enable_testing ()
 
 #  Platform checks.
@@ -86,6 +87,7 @@ check_symbol_exists (pipe2 "unistd.h" NN_HAVE_PIPE2)
 list (REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 if (NN_HAVE_PIPE2)
     add_definitions (-DNN_HAVE_PIPE2)
+    add_definitions (-D_GNU_SOURCE)
 endif()
 
 check_symbol_exists (socketpair "sys/types.h;sys/socket.h" NN_HAVE_SOCKETPAIR)
@@ -133,15 +135,17 @@ check_symbol_exists (accept4 sys/socket.h NN_HAVE_ACCEPT4)
 list (REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 if (NN_HAVE_ACCEPT4)
     add_definitions (-DNN_HAVE_ACCEPT4)
+    add_definitions (-D_GNU_SOURCE)
 endif ()
 
 list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 list (APPEND CMAKE_REQUIRED_LIBRARIES anl)
-check_symbol_exists (getaddrinfo_a netdb.h HAVE_GETADDRINFO_A)
+check_symbol_exists (getaddrinfo_a netdb.h NN_HAVE_GETADDRINFO_A)
 list (REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES anl)
 list (REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 if (NN_HAVE_GETADDRINFO_A)
     add_definitions (-DNN_HAVE_GETADDRINFO_A)
+    add_definitions (-D_GNU_SOURCE)
 endif ()
 
 list (APPEND CMAKE_REQUIRED_LIBRARIES rt pthread)
@@ -207,30 +211,28 @@ if (ALLOC_MONITOR)
     add_definitions(-DNN_ALLOC_MONITOR)
 endif ()
 
-option (LATENCY_MONITOR "Add latency monitoring" OFF)
-if (LATENCY_MONITOR)
-    add_definitions(-DNN_LATENCY_MONITOR=1000)
-endif ()
-
-# Be careful when turning this option on. It can mess with the existing ZeroMQ
-# installation on the box.
-option (ZMQ_COMPAT "Build ZMQ compatibility library" OFF)
-
 #  Version.
 
 file (READ "${PROJECT_SOURCE_DIR}/src/nn.h" NN_H_DATA)
-string (REGEX REPLACE ".*#define NN_VERSION_MAJOR ([0-9]+).*" "\\1" NN_VERSION_MAJOR "${NN_H_DATA}")
-string (REGEX REPLACE ".*#define NN_VERSION_MINOR ([0-9]+).*" "\\1" NN_VERSION_MINOR "${NN_H_DATA}")
-string (REGEX REPLACE ".*#define NN_VERSION_PATCH ([0-9]+).*" "\\1" NN_VERSION_PATCH "${NN_H_DATA}")
-set (NN_VERSION_STR "${NN_VERSION_MAJOR}.${NN_VERSION_MINOR}.${NN_VERSION_PATCH}")
+string (REGEX REPLACE ".*#define NN_VERSION_CURRENT ([0-9]+).*" "\\1" NN_VERSION_CURRENT "${NN_H_DATA}")
+string (REGEX REPLACE ".*#define NN_VERSION_REVISION ([0-9]+).*" "\\1" NN_VERSION_REVISION "${NN_H_DATA}")
+string (REGEX REPLACE ".*#define NN_VERSION_AGE ([0-9]+).*" "\\1" NN_VERSION_AGE "${NN_H_DATA}")
+set (NN_VERSION_STR "${NN_VERSION_CURRENT}.${NN_VERSION_REVISION}.${NN_VERSION_AGE}")
 
 #  Description
 
 set (NN_DESCRIPTION "nanomsg library is a high-performance implementation of several \"scalability protocols\". Scalability protocol's job is to define how multiple applications communicate to form a single distributed application")
 
-#  Subdirectories to build.
+#  Build the library itself.
 
 add_subdirectory (src)
+
+# pkg-config file
+
+if (UNIX)
+    configure_file (libnanomsg.pc.in libnanomsg.pc @ONLY)
+    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libnanomsg.pc DESTINATION lib/pkgconfig)
+endif ()
 
 #  Installation.
 
@@ -241,30 +243,7 @@ install (FILES src/tcp.h DESTINATION include/nanomsg)
 install (FILES src/pair.h DESTINATION include/nanomsg)
 install (FILES src/pubsub.h DESTINATION include/nanomsg)
 install (FILES src/reqrep.h DESTINATION include/nanomsg)
-install (FILES src/fanin.h DESTINATION include/nanomsg)
-install (FILES src/fanout.h DESTINATION include/nanomsg)
+install (FILES src/pipeline.h DESTINATION include/nanomsg)
 install (FILES src/survey.h DESTINATION include/nanomsg)
 install (FILES src/bus.h DESTINATION include/nanomsg)
-
-#  Source package.
-
-if (WIN32)
-    set (CPACK_SOURCE_GENERATOR ZIP)
-else ()
-    set (CPACK_SOURCE_GENERATOR TGZ)
-endif ()
-set (CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${NN_VERSION_STR}")
-set (CPACK_SOURCE_IGNORE_FILES "/build/;/.git/;.gitignore;README.md;${CPACK_SOURCE_IGNORE_FILES}")
-add_custom_target (dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
-
-#  Create the packages.
-
-set (CPACK_PACKAGE_NAME "${CMAKE_PROJECT_NAME}")
-set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "${NN_DESCRIPTION}")
-set (CPACK_PACKAGE_VERSION "${NN_VERSION_STR}")
-set (CPACK_PACKAGE_VERSION_MAJOR "${NN_VERSION_MAJOR}")
-set (CPACK_PACKAGE_VERSION_MINOR "${NN_VERSION_MINOR}")
-set (CPACK_PACKAGE_VERSION_PATCH "${NN_VERSION_PATCH}")
-
-include (CPack)
 

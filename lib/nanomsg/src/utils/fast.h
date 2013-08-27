@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012 250bpm s.r.o.
+    Copyright (c) 2012 250bpm s.r.o.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
 #ifndef NN_FAST_INCLUDED
 #define NN_FAST_INCLUDED
 
-#if defined __GNUC__
+#if defined __GNUC__ || defined __llvm__
 #define nn_fast(x) __builtin_expect ((x), 1)
 #define nn_slow(x) __builtin_expect ((x), 0)
 #else

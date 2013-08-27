@@ -3,8 +3,7 @@ HEADERS	=	src/nn.h \
 		src/reqrep.h \
 		src/pubsub.h \
 		src/survey.h \
-		src/fanin.h \
-		src/fanout.h \
+		src/pipeline.h \
 		src/bus.h \
 		src/inproc.h \
 		src/ipc.h \
@@ -14,14 +13,14 @@ HEADERS	=	src/nn.h \
 
 lib:
 	cd build; cmake ..; make
-	cp build/libnanomsg.a ../
-	mkdir ../../include/nanomsg
+	mv build/libnanomsg.so* ../
+	if [ ! -d ../../include/nanomsg ]; then mkdir ../../include/nanomsg; fi
 	cp ${HEADERS} ../../include/nanomsg
 
 all: clean lib
 
 clean:
 	cd build; rm -rf *
-	rm -f ../libnanomsg.a
+	rm -f ../libnanomsg.so*
 	rm -rf ../../include/nanomsg
 

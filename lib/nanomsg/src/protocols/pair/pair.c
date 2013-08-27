@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012-2013 250bpm s.r.o.
+    Copyright (c) 2012-2013 250bpm s.r.o.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -30,7 +30,9 @@
 static struct nn_socktype nn_pair_socktype_struct = {
     AF_SP,
     NN_PAIR,
+    0,
     nn_xpair_create,
+    nn_xpair_ispeer,
     NN_LIST_ITEM_INITIALIZER
 };
 

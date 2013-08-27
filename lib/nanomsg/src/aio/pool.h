@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2013 250bpm s.r.o.
+    Copyright (c) 2013 250bpm s.r.o.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -23,8 +23,6 @@
 #ifndef NN_POOL_INCLUDED
 #define NN_POOL_INCLUDED
 
-#if !defined NN_HAVE_WINDOWS
-
 #include "worker.h"
 
 /*  Worker thread pool. */
@@ -36,8 +34,6 @@ struct nn_pool {
 int nn_pool_init (struct nn_pool *self);
 void nn_pool_term (struct nn_pool *self);
 struct nn_worker *nn_pool_choose_worker (struct nn_pool *self);
-
-#endif
 
 #endif
 

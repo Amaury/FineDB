@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2012 250bpm s.r.o.
+    Copyright (c) 2012 250bpm s.r.o.  All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"),
@@ -37,6 +37,11 @@ void nn_queue_term (struct nn_queue *self)
     self->tail = NULL;
 }
 
+int nn_queue_empty (struct nn_queue *self)
+{
+    return self->head ? 0 : 1;
+}
+
 void nn_queue_push (struct nn_queue *self, struct nn_queue_item *item)
 {
     nn_assert (item->next == NN_QUEUE_NOTINQUEUE);
@@ -71,5 +76,10 @@ void nn_queue_item_init (struct nn_queue_item *self)
 void nn_queue_item_term (struct nn_queue_item *self)
 {
     nn_assert (self->next == NN_QUEUE_NOTINQUEUE);
+}
+
+int nn_queue_item_isinqueue (struct nn_queue_item *self)
+{
+    return self->next == NN_QUEUE_NOTINQUEUE ? 0 : 1;
 }
 
