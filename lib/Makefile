@@ -1,7 +1,8 @@
-SUBDIRS =	lmdb \
-		nanomsg \
-		snappy-c \
-		ylib
+SUBDIRS =	lmdb		\
+		nanomsg		\
+		snappy-c	\
+		ylib		\
+		linenoise
 
 .PHONY: default clean all
 

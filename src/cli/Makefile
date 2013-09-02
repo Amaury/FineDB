@@ -6,7 +6,7 @@ SRC	= finedb-cli.c
 # Paths to header files
 IPATH   = -I. -I../../include -I../server
 # Path to libraries and lib's names
-LDPATH  = -L. -L../../lib -lsnappy -ly -lfinedb -lrt -Wl,-rpath -Wl,'$$ORIGIN/../lib'
+LDPATH  = -L. -L../../lib -lsnappy -ly -lfinedb -llinenoise -lrt -Wl,-rpath -Wl,'$$ORIGIN/../lib'
 # Compiler options
 EXEOPT  = -O2 # -g for debug
 
