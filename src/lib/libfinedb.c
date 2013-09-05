@@ -24,7 +24,7 @@
 static yerr_t _read_data(int fd, ydynabin_t *container, size_t size);
 static int _send_key_data(finedb_client_t *client, ybool_t create_only,
                           ybool_t update_only, ybin_t key, ybin_t data);
-static int _send_incdec(finedb_client_t *client, ybool_t dec, ybin_t key, int val, int *new_value);
+//static int _send_incdec(finedb_client_t *client, ybool_t dec, ybin_t key, int val, int *new_value);
 static int _send_simple_request(finedb_client_t *client, const char code, char *response);
 
 /* Create a FineDB connection client. */
@@ -275,6 +275,7 @@ int finedb_update(finedb_client_t *client, ybin_t key, ybin_t data) {
 	return (_send_key_data(client, YFALSE, YTRUE, key, data));
 }
 
+#if 0
 /* Increment a value. */
 int finedb_inc(finedb_client_t *client, ybin_t key, int increment, int *new_value) {
 	return (_send_incdec(client, YFALSE, key, increment, new_value));
@@ -284,6 +285,7 @@ int finedb_inc(finedb_client_t *client, ybin_t key, int increment, int *new_valu
 int finedb_dec(finedb_client_t *client, ybin_t key, int increment, int *new_value) {
 	return (_send_incdec(client, YTRUE, key, increment, new_value));
 }
+#endif /* 0 */
 
 /* Start a transaction. */
 int finedb_start(finedb_client_t *client) {
@@ -298,25 +300,12 @@ int finedb_start(finedb_client_t *client) {
 	return (FINEDB_OK);
 }
 
-/* Commit a transaction. */
-int finedb_commit(finedb_client_t *client) {
+/* Stop a transaction. */
+int finedb_stop(finedb_client_t *client) {
 	char code;
 	int rc;
 
-	rc = _send_simple_request(client, PROTO_COMMIT, &code);
-	if (rc)
-		return (rc);
-	if (RESPONSE_STATUS(code) != RESP_OK)
-		return (FINEDB_ERR_SERVER);
-	return (FINEDB_OK);
-}
-
-/* Rollback a transaction. */
-int finedb_rollback(finedb_client_t *client) {
-	char code;
-	int rc;
-
-	rc = _send_simple_request(client, PROTO_ROLLBACK, &code);
+	rc = _send_simple_request(client, PROTO_STOP, &code);
 	if (rc)
 		return (rc);
 	if (RESPONSE_STATUS(code) != RESP_OK)
@@ -363,6 +352,7 @@ static int _send_simple_request(finedb_client_t *client, const char code, char *
 	return (FINEDB_OK);
 }
 
+#if 0
 /**
  * @function	_send_incdec
  * Send an INC/DEC request to the server.
@@ -437,6 +427,8 @@ end_of_process:
 	}
 	return (retval);
 }
+#endif /* 0 */
+
 /**
  * @function	_send_key_data
  * Send a PUT/ADD/UPDATE request to the server.
@@ -477,11 +469,13 @@ static int _send_key_data(finedb_client_t *client, ybool_t create_only,
 		zip_data[zip_len] = '\0';
 		snappy_free_env(&zip_env);
 		// preparation
+#if 0
 		if (create_only)
 			code = PROTO_ADD;
 		else if (update_only)
 			code = PROTO_UPDATE;
 		else
+#endif /* 0 */
 			code = PROTO_PUT;
 		code = REQUEST_ADD_COMPRESSED(code);
 		if (client->sync)
@@ -517,6 +511,7 @@ static int _send_key_data(finedb_client_t *client, ybool_t create_only,
 		return (FINEDB_ERR_SERVER);
 	return (FINEDB_OK);
 }
+
 /**
  * Read data from a socket.
  * @param	fd		Socket descriptor.

@@ -9,14 +9,27 @@
 #include "yerror.h"
 #include "connection_thread.h"
 #include "database.h"
-#include "command_setdb.h"
-#include "command_get.h"
-#include "command_del.h"
-#include "command_put.h"
-#include "command_list.h"
-#include "command_drop.h"
-#include "command_start_commit_rollback.h"
-#include "command_ping.h"
+#include "command.h"
+
+/* Array of command handlers. */
+static command_handler_t _commands[] = {
+	command_ping,
+	command_get,
+	command_del,
+	command_put,
+	command_setdb,
+	command_start,
+	command_stop,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL, //command_admin,
+	NULL  //command_extra
+};
 
 /* Create a new connection thread. */
 tcp_thread_t *connection_thread_new(finedb_t *finedb) {
@@ -89,95 +102,33 @@ void *connection_thread_execution(void *param) {
 		buff = ydynabin_new(NULL, 0, YFALSE);
 		// loop on incoming requests
 		for (; ; ) {
-			unsigned char *command;
+			unsigned char *request, command;
 			ybool_t sync, compress, serialized;
+			command_handler_t func;
 
 			YLOG_ADD(YLOG_DEBUG, "Processing a new request.");
 			if (connection_read_data(thread, buff, 1) != YENOERR) {
 				YLOG_ADD(YLOG_DEBUG, "The socket was closed.");
 				goto end_of_connection;
 			}
-			// read command
-			command = ydynabin_forward(buff, sizeof(unsigned char));
-			sync = (thread->transaction || REQUEST_HAS_SYNC(*command)) ? YTRUE : YFALSE;
-			compress = REQUEST_HAS_COMPRESSED(*command) ? YTRUE : YFALSE;
-			serialized = REQUEST_HAS_SERIALIZED(*command) ? YTRUE : YFALSE;
+			// read request
+			request = ydynabin_forward(buff, sizeof(unsigned char));
+			command = REQUEST_COMMAND(*request);
+			sync = (thread->transaction || REQUEST_HAS_SYNC(*request)) ? YTRUE : YFALSE;
+			compress = REQUEST_HAS_COMPRESSED(*request) ? YTRUE : YFALSE;
+			serialized = REQUEST_HAS_SERIALIZED(*request) ? YTRUE : YFALSE;
 			YLOG_ADD(YLOG_DEBUG, "---Req: '%x' - txn: %d - sync: %d - comp: %d\n",
-			         REQUEST_COMMAND(*command), (thread->transaction ? 1 : 0),
-			         (sync ? 1 : 0), (compress ? 1 : 0));
+			         command, (thread->transaction ? 1 : 0), (sync ? 1 : 0),
+			         (compress ? 1 : 0));
 			// execute the command
-			switch (REQUEST_COMMAND(*command)) {
-			case PROTO_SETDB:
-				YLOG_ADD(YLOG_DEBUG, "SETDB command");
-				if (command_setdb(thread, buff) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_GET:
-				YLOG_ADD(YLOG_DEBUG, "GET command");
-				if (command_get(thread, compress, buff) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_DEL:
-				YLOG_ADD(YLOG_DEBUG, "DEL command");
-				if (command_del(thread, sync, buff) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_PUT:
-				YLOG_ADD(YLOG_DEBUG, "PUT command");
-				if (command_put(thread, sync, compress, YFALSE, YFALSE, buff) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_ADD:
-				YLOG_ADD(YLOG_DEBUG, "ADD command");
-				if (command_put(thread, sync, compress, YTRUE, YFALSE, buff) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_UPDATE:
-				YLOG_ADD(YLOG_DEBUG, "UPDATE command");
-				if (command_put(thread, sync, compress, YFALSE, YTRUE, buff) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_INC:
-				YLOG_ADD(YLOG_DEBUG, "INC command");
-				break;
-			case PROTO_DEC:
-				YLOG_ADD(YLOG_DEBUG, "DEC command");
-				break;
-			case PROTO_START:
-				YLOG_ADD(YLOG_DEBUG, "START command");
-				if (command_start(thread) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_COMMIT:
-				YLOG_ADD(YLOG_DEBUG, "COMMIT command");
-				if (command_commit(thread) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_ROLLBACK:
-				YLOG_ADD(YLOG_DEBUG, "ROLLBACK command");
-				if (command_rollback(thread) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_LIST:
-				YLOG_ADD(YLOG_DEBUG, "LIST command");
-				if (command_list(thread, buff) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_DROP:
-				YLOG_ADD(YLOG_DEBUG, "DROP command");
-				if (command_drop(thread, sync, buff) != YENOERR)
-					goto end_of_connection;
-				break;
-			case PROTO_PING:
-				YLOG_ADD(YLOG_DEBUG, "PING command");
-				if (command_ping(thread) != YENOERR)
-					goto end_of_connection;
-				break;
-			default:
-				YLOG_ADD(YLOG_DEBUG, "Bad command '%x'", REQUEST_COMMAND(*command));
+			if (!(func = _commands[command])) {
+				YLOG_ADD(YLOG_DEBUG, "Bad command '%x'", command);
 				CONNECTION_SEND_ERROR(thread, RESP_ERR_PROTOCOL);
 				goto end_of_connection;
 			}
+			YLOG_ADD(YLOG_DEBUG, "Command %x", command);
+			if (func(thread, sync, compress, serialized, buff) != YENOERR)
+				goto end_of_connection;
 		}
 end_of_connection:
 		YLOG_ADD(YLOG_DEBUG, "End of connection.");

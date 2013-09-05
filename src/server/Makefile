@@ -5,20 +5,20 @@
 # Executable's name
 NAME	=	finedb-server
 # Source files
-SRC	=	main.c				\
-		self_path.c			\
-		finedb.c			\
-		database.c			\
-		server.c			\
-		writer_thread.c			\
-		connection_thread.c		\
-		command_setdb.c			\
-		command_get.c			\
-		command_del.c			\
-		command_put.c			\
-		command_list.c			\
-		command_drop.c			\
-		command_start_commit_rollback.c	\
+SRC	=	main.c			\
+		self_path.c		\
+		finedb.c		\
+		database.c		\
+		server.c		\
+		writer_thread.c		\
+		connection_thread.c	\
+		command_setdb.c		\
+		command_get.c		\
+		command_del.c		\
+		command_put.c		\
+		command_list.c		\
+		command_drop.c		\
+		command_start_stop.c	\
 		command_ping.c
 
 # ###################################################################

@@ -55,36 +55,26 @@
 /**
  * @typedef	protocol_command_t
  *		List of protocol commands.
- * @constant	PROTO_SETDB	SETDB command.
+ * @constant	PROTO_PING	PING command.
  * @constant	PROTO_GET	GET command.
  * @constant	PROTO_DEL	DEL command.
  * @constant	PROTO_PUT	PUT command.
- * @constant	PROTO_ADD	ADD command.
- * @constant	PROTO_UPDATE	UPDATE command.
- * @constant	PROTO_INC	INC command.
- * @constant	PROTO_DEC	DEC command.
+ * @constant	PROTO_SETDB	SETDB command.
  * @constant	PROTO_START	START command.
- * @constant	PROTO_COMMIT	COMMIT command.
- * @constant	PROTO_ROLLBACK	ROLLBACK command.
- * @constant	PROTO_LIST	LIST command.
- * @constant	PROTO_DROP	DROP command.
- * @constant	PROTO_PING	PING command.
+ * @constant	PROTO_STOP	STOP command.
+ * @constant	PROTO_ADMIN	ADMIN command.
+ * @constant	PROTO_EXTRA	EXTRA command.
  */
 typedef enum protocol_command_e {
-	PROTO_SETDB	= 0x0,
+	PROTO_PING	= 0x0,
 	PROTO_GET	= 0x1,
 	PROTO_DEL	= 0x2,
 	PROTO_PUT	= 0x3,
-	PROTO_ADD	= 0x4,
-	PROTO_UPDATE	= 0x5,
-	PROTO_INC	= 0x6,
-	PROTO_DEC	= 0x7,
-	PROTO_START	= 0x8,
-	PROTO_COMMIT	= 0x9,
-	PROTO_ROLLBACK	= 0xa,
-	PROTO_LIST	= 0xb,
-	PROTO_DROP	= 0xc,
-	PROTO_PING	= 0xd
+	PROTO_SETDB	= 0x4,
+	PROTO_START	= 0x5,
+	PROTO_STOP	= 0x6,
+	PROTO_ADMIN	= 0xe,
+	PROTO_EXTRA	= 0xf,
 } protocol_command_t;
 
 /**

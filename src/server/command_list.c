@@ -5,7 +5,7 @@
 #include "snappy.h"
 #include "ylog.h"
 #include "ybin.h"
-#include "command_list.h"
+#include "command.h"
 #include "protocol.h"
 #include "database.h"
 
@@ -13,7 +13,7 @@
 static yerr_t _command_list_loop(void *ptr, ybin_t key, ybin_t data);
 
 /* Process a LIST command. */
-yerr_t command_list(tcp_thread_t *thread, ydynabin_t *buff) {
+yerr_t command_list(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t serialized, ydynabin_t *buff) {
 	char last_byte = 0;
 	yerr_t result;
 

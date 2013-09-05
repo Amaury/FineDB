@@ -3,13 +3,15 @@
 #include "nanomsg/nn.h"
 #include "snappy.h"
 #include "ylog.h"
-#include "command_put.h"
+#include "command.h"
 #include "protocol.h"
 #include "writer_thread.h"
 #include "database.h"
 
 /* Process a PUT command. */
-yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t create_only, ybool_t update_only, ydynabin_t *buff) {
+yerr_t command_put(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t serialized, ydynabin_t *buff) {
+	ybool_t create_only = YFALSE, update_only = YFALSE;
+
 	uint16_t *pname_len, name_len;
 	uint32_t *pdata_len, data_len;
 	void *ptr, *name = NULL, *data = NULL;

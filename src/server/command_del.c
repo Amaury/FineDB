@@ -2,13 +2,13 @@
 #include <string.h>
 #include "nanomsg/nn.h"
 #include "ylog.h"
-#include "command_del.h"
+#include "command.h"
 #include "protocol.h"
 #include "database.h"
 #include "writer_thread.h"
 
 /* Process a DEL command. */
-yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
+yerr_t command_del(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t serialized, ydynabin_t *buff) {
 	uint16_t *pkey_len, key_len;
 	void *ptr, *key = NULL;
 	writer_msg_t *msg = NULL;

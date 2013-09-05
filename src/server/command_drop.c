@@ -3,13 +3,13 @@
 #include "nanomsg/nn.h"
 #include "snappy.h"
 #include "ylog.h"
-#include "command_drop.h"
+#include "command.h"
 #include "protocol.h"
 #include "writer_thread.h"
 #include "database.h"
 
 /* Process a DROP command. */
-yerr_t command_drop(tcp_thread_t *thread, ybool_t sync, ydynabin_t *buff) {
+yerr_t command_drop(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t serialized, ydynabin_t *buff) {
 	writer_msg_t *msg = NULL;
 	char answer;
 

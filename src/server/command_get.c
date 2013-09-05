@@ -4,17 +4,16 @@
 #include "snappy.h"
 #include "ylog.h"
 #include "ybin.h"
-#include "command_get.h"
+#include "command.h"
 #include "protocol.h"
 #include "database.h"
 
 /* Process a GET command. */
-yerr_t command_get(tcp_thread_t *thread, ybool_t compress, ydynabin_t *buff) {
+yerr_t command_get(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t serialized, ydynabin_t *buff) {
 	uint16_t *pname_len, name_len;
 	void *ptr, *name = NULL;
 	ybin_t bin_key, bin_data;
 	yerr_t result;
-	ybool_t serialized = YFALSE;
 
 	YLOG_ADD(YLOG_DEBUG, "GET command");
 	// read name length

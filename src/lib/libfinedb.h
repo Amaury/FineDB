@@ -151,6 +151,7 @@ int finedb_add(finedb_client_t *client, ybin_t key, ybin_t data);
  */
 int finedb_update(finedb_client_t *client, ybin_t key, ybin_t data);
 
+#if 0
 /**
  * @function	finedb_inc
  * Increment a value.
@@ -172,6 +173,7 @@ int finedb_inc(finedb_client_t *client, ybin_t key, int increment, int *new_valu
  * @return	FINEDB_OK if OK.
  */
 int finedb_dec(finedb_client_t *client, ybin_t key, int increment, int *new_value);
+#endif /* 0 */
 
 /**
  * @function	finedb_start
@@ -182,20 +184,12 @@ int finedb_dec(finedb_client_t *client, ybin_t key, int increment, int *new_valu
 int finedb_start(finedb_client_t *client);
 
 /**
- * @function	finedb_commit
- * Commit a transaction.
+ * @function	finedb_stop
+ * Stop a transaction.
  * @param	client	Pointer to the client structure.
  * @return	FINEDB_OK if OK.
  */
-int finedb_commit(finedb_client_t *client);
-
-/**
- * @function	finedb_rollback
- * Rollback a transaction.
- * @param	client	Pointer to the client structure.
- * @return	FINEDB_OK if OK.
- */
-int finedb_rollback(finedb_client_t *client);
+int finedb_stop(finedb_client_t *client);
 
 /**
  * @function	finedb_ping

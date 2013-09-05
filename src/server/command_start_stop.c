@@ -1,16 +1,16 @@
 #include "ylog.h"
-#include "command_start_commit_rollback.h"
+#include "command.h"
 #include "protocol.h"
 #include "database.h"
 
 /* Process a START command. */
-yerr_t command_start(tcp_thread_t *thread) {
+yerr_t command_start(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t serialized, ydynabin_t *buff) {
 	YLOG_ADD(YLOG_DEBUG, "START command");
 	// rollback previous transaction
 	if (thread->transaction != NULL)
 		database_transaction_rollback(thread->transaction);
 	// open transaction
-	thread->transaction = database_transaction_start(thread->finedb->database, YFALSE);
+	thread->transaction = database_transaction_start(thread->finedb->database, YTRUE);
 	if (thread->transaction == NULL)
 		goto error;
 	CONNECTION_SEND_OK(thread);
@@ -21,27 +21,9 @@ error:
 	return (YEACCESS);
 }
 
-/* Process a COMMIT command. */
-yerr_t command_commit(tcp_thread_t *thread) {
-	YLOG_ADD(YLOG_DEBUG, "COMMIT command");
-	// check running transaction
-	if (thread->transaction == NULL)
-		goto error;
-	// commit transaction
-	if (database_transaction_commit(thread->transaction) != YENOERR)
-		goto error;
-	thread->transaction = NULL;
-	CONNECTION_SEND_OK(thread);
-	return (YENOERR);
-error:
-	YLOG_ADD(YLOG_WARN, "COMMIT error");
-	CONNECTION_SEND_ERROR(thread, RESP_ERR_TRANSACTION);
-	return (YEACCESS);
-}
-
-/* Process a ROLLBACK command. */
-yerr_t command_rollback(tcp_thread_t *thread) {
-	YLOG_ADD(YLOG_DEBUG, "ROLLBACK command");
+/* Process a STOP command. */
+yerr_t command_stop(tcp_thread_t *thread, ybool_t sync, ybool_t compress, ybool_t serialized, ydynabin_t *buff) {
+	YLOG_ADD(YLOG_DEBUG, "STOP command");
 	// check running transaction
 	if (thread->transaction == NULL)
 		goto error;
@@ -51,7 +33,7 @@ yerr_t command_rollback(tcp_thread_t *thread) {
 	CONNECTION_SEND_OK(thread);
 	return (YENOERR);
 error:
-	YLOG_ADD(YLOG_WARN, "ROLLBACK error");
+	YLOG_ADD(YLOG_WARN, "STOP error");
 	CONNECTION_SEND_ERROR(thread, RESP_ERR_TRANSACTION);
 	return (YEACCESS);
 }

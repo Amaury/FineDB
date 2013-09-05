@@ -53,8 +53,7 @@ void command_send_data(cli_t *cli, char *pt, ybool_t create_only, ybool_t update
 void command_inc(cli_t *cli, char *pt);
 void command_dec(cli_t *cli, char *pt);
 void command_start(cli_t *cli);
-void command_commit(cli_t *cli);
-void command_rollback(cli_t *cli);
+void command_stop(cli_t *cli);
 #if 0
 void command_list(cli_t *cli, char *pt);
 void command_drop(cli_t *cli, char *pt);
@@ -183,10 +182,8 @@ int main(int argc, char *argv[]) {
 			command_dec(&cli, pt);
 		else if (!strcasecmp(cmd, "start"))
 			command_start(&cli);
-		else if (!strcasecmp(cmd, "commit"))
-			command_commit(&cli);
-		else if (!strcasecmp(cmd, "rollback"))
-			command_rollback(&cli);
+		else if (!strcasecmp(cmd, "stop"))
+			command_stop(&cli);
 #if 0
 		else if (!strcasecmp(cmd, "list"))
 			command_list(&cli, pt);
@@ -463,8 +460,8 @@ void command_start(cli_t *cli) {
 	cli->in_transaction = YTRUE;
 }
 
-/* Commit a transaction. */
-void command_commit(cli_t *cli) {
+/* Stop a transaction. */
+void command_stop(cli_t *cli) {
 	int rc;
 
 	// check connection if needed
@@ -477,38 +474,13 @@ void command_commit(cli_t *cli) {
 		return;
 	}
 	// request
-	rc = finedb_commit(cli->finedb);
+	rc = finedb_stop(cli->finedb);
 	if (rc) {
 		printf_color("red", "Server error.");
 		printf("\n");
 		return;
 	}
-	printf_decorated("faint", "Transaction committed.");
-	printf("\n");
-	cli->in_transaction = YFALSE;
-}
-
-/* Rollback a transaction. */
-void command_rollback(cli_t *cli) {
-	int rc;
-
-	// check connection if needed
-	if (!check_connection(cli))
-		return;
-	// check opened transaction
-	if (!cli->in_transaction) {
-		printf_color("red", "No opened transaction.");
-		printf("\n");
-		return;
-	}
-	// request
-	rc = finedb_rollback(cli->finedb);
-	if (rc) {
-		printf_color("red", "Server error.");
-		printf("\n");
-		return;
-	}
-	printf_decorated("faint", "Transaction aborted.");
+	printf_decorated("faint", "Transaction stopped.");
 	printf("\n");
 	cli->in_transaction = YFALSE;
 }
