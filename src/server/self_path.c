@@ -53,4 +53,26 @@ const char *get_self_path() {
 	return (path);
 }
 
+#elif defined __FreeBSD__
+
+# include <sys/types.h>
+# include <sys/sysctl.h>
+# include <limits.h>
+
+const char *get_self_path() {
+	static char path[PATH_MAX] = { '\0' };
+
+	if ( path[0] == '\0' ) {
+		int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+		size_t size = sizeof(path);
+		char *pt;
+
+		sysctl(mib, sizeof(mib)/sizeof(*mib), path, &size, NULL, 0);
+		if ((pt = strrchr(path, '/')) != NULL)
+			*pt = '\0';
+		return path;
+	}
+	return path;
+}
+
 #endif
