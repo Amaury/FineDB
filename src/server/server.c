@@ -1,4 +1,6 @@
+#ifdef __linux__
 #include <linux/limits.h>
+#endif
 #include <unistd.h>
 #include <netdb.h>
 #include <netinet/in.h>
